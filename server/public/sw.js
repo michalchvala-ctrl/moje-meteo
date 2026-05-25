@@ -1,4 +1,4 @@
-const VERSION = 'v1.4.5';
+const VERSION = 'v1.4.7';
 const STATIC_CACHE = `meteo-static-${VERSION}`;
 
 const PRECACHE = ['/', '/manifest.json', '/icon.svg'];
