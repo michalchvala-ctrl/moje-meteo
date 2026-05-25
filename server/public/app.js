@@ -660,11 +660,7 @@ async function fillForecastSettingsForm(fcIn) {
       if (s && Object.prototype.hasOwnProperty.call(s, 'forecast')) {
         fc = s.forecast;
       } else if (summary) {
-        summary.textContent = 'Backend je starý — v odpovedi /api/settings chýba „forecast“. Na euflix: git pull, potom podman cp server/forecast.js a server/server.js do kontajnera a restart.';
-        if (lat) lat.value = '';
-        if (lon) lon.value = '';
-        if (name) name.value = '';
-        if (query) query.value = '';
+        summary.textContent = 'Server nevrátil blok „forecast“ — obnov stránku Ctrl+Shift+R. Ak trvá, vypni Service Worker (F12 → Application).';
         return;
       }
     } catch (e) {
@@ -676,10 +672,6 @@ async function fillForecastSettingsForm(fcIn) {
     if (summary) {
       summary.textContent = 'Lokalita ešte nie je uložená — vyhľadaj mesto a klikni „Uložiť lokalitu“.';
     }
-    if (lat) lat.value = '';
-    if (lon) lon.value = '';
-    if (name) name.value = '';
-    if (query) query.value = '';
     return;
   }
   const label = (fc.name || fc.label || '').trim();
@@ -789,14 +781,27 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
     toast('Zadaj platné súradnice (bodka alebo čiarka).', 'error');
     return;
   }
+  const justSaved = {
+    lat,
+    lon,
+    name: name || 'Lokalita',
+    label: name || 'Lokalita',
+    days: days || 7,
+    saved: true
+  };
   try {
-    state.settings = await api('/api/settings', {
+    const res = await api('/api/settings', {
       method: 'PUT',
-      body: {
-        forecast: { lat, lon, name, days }
-      }
+      body: { forecast: { lat, lon, name, days } }
     });
-    await fillForecastSettingsForm(state.settings.forecast);
+    state.settings = res;
+    let fc = res?.forecast;
+    if (!fc) {
+      const s = await api('/api/settings');
+      state.settings = s;
+      fc = s?.forecast;
+    }
+    await fillForecastSettingsForm(fc || justSaved);
     toast('Lokalita predpovede uložená');
     if ($('#view-forecast')?.classList.contains('active')) loadForecast();
   } catch (err) {

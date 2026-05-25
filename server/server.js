@@ -164,7 +164,14 @@ app.post('/api/change-password', requireAuth, (req, res) => {
 });
 
 function settingsPayload() {
-  return ecowitt.settingsForClient({ forecast: forecast.clientSettings() });
+  let fc;
+  try {
+    fc = forecast.clientSettings();
+  } catch (err) {
+    console.error('[meteo] forecast settings:', err.message);
+    fc = { lat: 48.1486, lon: 17.1077, name: '', label: 'Bratislava', days: 7, saved: false };
+  }
+  return ecowitt.settingsForClient({ forecast: fc });
 }
 
 app.get('/api/settings', requireAuth, (req, res) => {
