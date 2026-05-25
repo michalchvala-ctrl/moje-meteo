@@ -102,7 +102,8 @@ app.get('/api/config', (req, res) => {
     appName: 'Moje meteo',
     version: APP_VERSION,
     hasUsers: userCount > 0,
-    allowBootstrap: userCount === 0
+    allowBootstrap: userCount === 0,
+    features: { forecast: true }
   });
 });
 

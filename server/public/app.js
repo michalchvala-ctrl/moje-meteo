@@ -657,13 +657,29 @@ async function fillForecastSettingsForm(fcIn) {
     try {
       const s = await api('/api/settings');
       state.settings = s;
-      fc = s.forecast;
-    } catch (_) { /* ignore */ }
+      if (s && Object.prototype.hasOwnProperty.call(s, 'forecast')) {
+        fc = s.forecast;
+      } else if (summary) {
+        summary.textContent = 'Backend je starý — v odpovedi /api/settings chýba „forecast“. Na euflix: git pull, potom podman cp server/forecast.js a server/server.js do kontajnera a restart.';
+        if (lat) lat.value = '';
+        if (lon) lon.value = '';
+        if (name) name.value = '';
+        if (query) query.value = '';
+        return;
+      }
+    } catch (e) {
+      if (summary) summary.textContent = `Nastavenia sa nenačítali: ${e.message}`;
+      return;
+    }
   }
   if (!fc) {
     if (summary) {
-      summary.textContent = 'Nastavenia predpovede sa nenačítali zo servera — obnov stránku (Ctrl+F5). Ak problém trvá, na euflix spusti git pull a reštart kontajnera.';
+      summary.textContent = 'Lokalita ešte nie je uložená — vyhľadaj mesto a klikni „Uložiť lokalitu“.';
     }
+    if (lat) lat.value = '';
+    if (lon) lon.value = '';
+    if (name) name.value = '';
+    if (query) query.value = '';
     return;
   }
   const label = (fc.name || fc.label || '').trim();

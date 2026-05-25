@@ -32,6 +32,16 @@ git tag v1.2.1
 git push origin v1.2.1
 ```
 
+## Rýchly deploy na euflix (po `git pull`)
+
+```bash
+cd /opt/moje-meteo
+chmod +x scripts/deploy-quick.sh
+./scripts/deploy-quick.sh
+```
+
+Očakávané v `/api/config`: `"version":"1.2.6"` a `"features":{"forecast":true}`.
+
 ## Nasadenie na euflix po `git push`
 
 Na serveri (SSH ako `euforik`):
