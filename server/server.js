@@ -14,6 +14,17 @@ const alerts = require('./alerts');
 const { chartPeriodRangeIso } = require('./chart-period');
 
 const PORT = parseInt(process.env.PORT || '8081', 10);
+
+function readAppVersion() {
+  const versionFile = path.join(__dirname, 'VERSION');
+  try {
+    return fs.readFileSync(versionFile, 'utf8').trim() || 'dev';
+  } catch {
+    return process.env.APP_VERSION || 'dev';
+  }
+}
+
+const APP_VERSION = readAppVersion();
 const COOKIE_SECURE = (process.env.COOKIE_SECURE || 'false').toLowerCase() === 'true';
 const TRUST_PROXY = (process.env.TRUST_PROXY || 'false').toLowerCase() === 'true';
 const COOKIE_NAME = 'meteo_token';
@@ -89,6 +100,7 @@ app.get('/api/config', (req, res) => {
   const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   res.json({
     appName: 'Moje meteo',
+    version: APP_VERSION,
     hasUsers: userCount > 0,
     allowBootstrap: userCount === 0
   });

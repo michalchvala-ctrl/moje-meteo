@@ -18,6 +18,7 @@ RUN apk add --no-cache tini wget && \
 WORKDIR /app
 COPY --from=builder /build/node_modules ./node_modules
 # .dockerignore vylučuje server/node_modules z Windows
+COPY VERSION ./VERSION
 COPY server/ ./
 RUN chown -R app:app /app
 

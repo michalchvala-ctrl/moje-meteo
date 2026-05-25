@@ -134,8 +134,17 @@ function showApp() {
   $('#app').classList.remove('hidden');
 }
 
+function renderAboutApp(cfg) {
+  const el = $('#aboutAppLine');
+  if (!el || !cfg) return;
+  const v = cfg.version || '?';
+  el.textContent = `Verzia ${v} · Self-hosted · PWA · Ecowitt · 🌤️ Naživo · 📅 Predpoveď · 📈 Grafy · 🔔 Upozornenia · import Excel`;
+}
+
 async function initAuth() {
   const cfg = await api('/api/config');
+  state.config = cfg;
+  renderAboutApp(cfg);
   try {
     state.user = await api('/api/me');
     showApp();
