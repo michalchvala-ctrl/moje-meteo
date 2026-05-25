@@ -306,18 +306,11 @@ function renderLiveScene(latest) {
   root.style.setProperty('--rain-int', s.rainInt.toFixed(2));
 
   const driftDeg = s.windFrom != null ? s.blowTo : 90;
-  const driftRad = ((driftDeg - 90) * Math.PI) / 180;
-  const dist = 420;
-  const cos = Math.cos(driftRad);
-  const sin = Math.sin(driftRad);
-  root.style.setProperty('--cloud-from-x', `${(-cos * 85).toFixed(1)}px`);
-  root.style.setProperty('--cloud-from-y', `${(-sin * 42).toFixed(1)}px`);
-  root.style.setProperty('--cloud-to-x', `${(cos * dist).toFixed(1)}px`);
-  root.style.setProperty('--cloud-to-y', `${(sin * dist * 0.42).toFixed(1)}px`);
+  root.style.setProperty('--cloud-angle', `${driftDeg}deg`);
   const cloudDur = liveCloudDriftDuration(s.windSpeed, s.windStr);
   root.style.setProperty('--cloud-dur', `${cloudDur}s`);
-  root.style.setProperty('--cloud-dur-b', `${(cloudDur * 1.22).toFixed(1)}s`);
-  root.style.setProperty('--cloud-dur-c', `${(cloudDur * 0.86).toFixed(1)}s`);
+  root.style.setProperty('--cloud-dur-b', `${(cloudDur * 1.15).toFixed(1)}s`);
+  root.style.setProperty('--cloud-dur-c', `${(cloudDur * 1.45).toFixed(1)}s`);
 
   const applyCelestial = (wrap, pos, el, show) => {
     if (!wrap || !el) return;

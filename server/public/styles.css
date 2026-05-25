@@ -625,39 +625,66 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 .live-scene[data-phase="dusk"] .live-stars,
 .live-scene[data-phase="dawn"] .live-stars { opacity: .35; }
 
-.live-clouds {
+/* Oblaky: celá vrstva sa natočí podľa vetra, každý mrak „plachtí“ s vlnením */
+.live-cloud-wind {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  width: 100%;
-  height: 48%;
+  inset: -5% -15% 45% -15%;
   z-index: 4;
   pointer-events: none;
-  opacity: calc(.2 + var(--clouds, .3) * .8);
+  overflow: hidden;
+  transform: rotate(var(--cloud-angle, 90deg));
+  transform-origin: 50% 42%;
+  opacity: calc(.25 + var(--clouds, .35) * .75);
 }
-.live-cloud-puff {
-  fill: rgba(255, 255, 255, calc(.75 * var(--clouds, .45) + .2));
+.live-clouds {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
-.live-cloud-puff-hi {
-  fill: rgba(255, 255, 255, calc(.9 * var(--clouds, .5) + .25));
-}
-.live-cloud-drift {
-  animation: liveCloudDrift var(--cloud-dur, 52s) linear infinite;
-}
-.live-cloud-a { animation-duration: var(--cloud-dur, 52s); }
-.live-cloud-b {
-  animation-duration: var(--cloud-dur-b, 64s);
-  animation-delay: -18s;
+.live-cloud-sail {
+  animation: liveCloudSail var(--cloud-dur, 52s) ease-in-out infinite;
+  will-change: transform, opacity;
 }
 .live-cloud-c {
-  animation-duration: var(--cloud-dur-c, 44s);
-  animation-delay: -8s;
+  animation-duration: var(--cloud-dur-c, 58s);
+  animation-delay: calc(var(--cloud-dur-c, 58s) * -0.35);
+}
+.live-cloud-b {
+  animation-duration: var(--cloud-dur-b, 48s);
+  animation-delay: calc(var(--cloud-dur-b, 48s) * -0.55);
+}
+.live-cloud-a {
+  animation-duration: var(--cloud-dur, 38s);
+  animation-delay: calc(var(--cloud-dur, 38s) * -0.12);
+}
+.live-cloud-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: liveCloudBreathe 11s ease-in-out infinite;
+}
+.live-cloud-b .live-cloud-body { animation-duration: 13s; animation-delay: -4s; }
+.live-cloud-c .live-cloud-body { animation-duration: 15s; animation-delay: -7s; }
+
+@keyframes liveCloudSail {
+  0% {
+    transform: translate(-22%, 6px) scale(0.86);
+    opacity: 0;
+  }
+  10% { opacity: calc(.35 + var(--clouds, .4) * .55); }
+  28% { transform: translate(8%, -5px) scale(0.94); }
+  52% { transform: translate(38%, 4px) scale(1.03); }
+  76% { transform: translate(68%, -3px) scale(0.98); }
+  92% { opacity: calc(.3 + var(--clouds, .4) * .5); }
+  100% {
+    transform: translate(108%, 5px) scale(0.88);
+    opacity: 0;
+  }
 }
 
-@keyframes liveCloudDrift {
-  from { transform: translate(var(--cloud-from-x, -95px), var(--cloud-from-y, 0)); }
-  to { transform: translate(var(--cloud-to-x, 420px), var(--cloud-to-y, 0)); }
+@keyframes liveCloudBreathe {
+  0%, 100% { transform: scale(1, 1); }
+  33% { transform: scale(1.05, 0.96); }
+  66% { transform: scale(0.97, 1.03); }
 }
 
 .live-celestial-layer {
@@ -874,7 +901,7 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 [data-theme="dark"] .live-window { fill: #334155; }
 
 @media (prefers-reduced-motion: reduce) {
-  .live-tree, .live-cloud-drift, .live-raindrop, .live-snowflake, .live-windbit {
+  .live-tree, .live-cloud-sail, .live-cloud-body, .live-raindrop, .live-snowflake, .live-windbit {
     animation: none !important;
   }
 }
