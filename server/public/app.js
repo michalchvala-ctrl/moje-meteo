@@ -236,7 +236,7 @@ function registerServiceWorker() {
 async function loadCurrent(silent = false) {
   try {
     state.current = await api('/api/current');
-    renderCurrent();
+    await renderCurrent();
     renderAlertBanners();
     if (!silent) await loadDashboardChart();
   } catch (e) {
@@ -244,7 +244,7 @@ async function loadCurrent(silent = false) {
   }
 }
 
-function renderCurrent() {
+async function renderCurrent() {
   const { latest, today, settings } = state.current || {};
   const s = settings?.ecowitt;
 
