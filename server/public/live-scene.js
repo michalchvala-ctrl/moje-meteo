@@ -387,8 +387,11 @@ async function renderLiveScene(latest) {
     moonEl.style.opacity = String(0.55 + s.moon.illumination * 0.45);
   }
   if (moonMask) {
-    const shift = Math.cos(s.moon.phase * 2 * Math.PI) * 54;
-    moonMask.setAttribute('cx', String(32 + shift));
+    /* Severná pologuľa: dorastajúci = svetlá strana vpravo, ubúdajúci vľavo */
+    const r = 27;
+    const gap = 2 * r * (1 - Math.max(0, Math.min(1, s.moon.illumination)));
+    const cx = 32 + (s.moon.waxing ? -gap : gap);
+    moonMask.setAttribute('cx', String(cx));
   }
 
   const vane = document.getElementById('liveVane');
@@ -445,8 +448,12 @@ async function renderLiveScene(latest) {
   if (cap) {
     const parts = [];
     if (s.customTime) parts.push('Náhľad');
-    if (s.isNight) parts.push(s.moon.name);
-    else parts.push(s.dayPhase === 'dawn' ? 'Úsvit' : s.dayPhase === 'dusk' ? 'Súmrak' : 'Deň');
+    if (s.isNight || s.moon.visible) {
+      const pct = Math.round(s.moon.illumination * 100);
+      parts.push(`${s.moon.name} (${pct} %)`);
+    } else if (!s.customTime) {
+      parts.push(s.dayPhase === 'dawn' ? 'Úsvit' : s.dayPhase === 'dusk' ? 'Súmrak' : 'Deň');
+    }
     if (s.rainInt > 0) parts.push(s.snow ? 'Sneží' : 'Prší');
     else if (s.windStr > 0.35) parts.push('Fúka vietor');
     if (s.frozen) parts.push('Mráz');
@@ -459,7 +466,8 @@ async function renderLiveScene(latest) {
       s.temp != null ? `<span>${Number(s.temp).toFixed(1)} °C</span>` : '',
       s.windSpeed != null ? `<span>💨 ${Number(s.windSpeed).toFixed(1)} km/h</span>` : '',
       s.windFrom != null ? `<span>🧭 ${Math.round(s.windFrom)}° ${typeof degToCompassShort === 'function' ? degToCompassShort(s.windFrom) : ''}</span>` : '',
-      s.rainRate > 0 ? `<span>🌧 ${Number(s.rainRate).toFixed(1)} mm/h</span>` : ''
+      s.rainRate > 0 ? `<span>🌧 ${Number(s.rainRate).toFixed(1)} mm/h</span>` : '',
+      s.moon.visible ? `<span>🌙 ${(s.moon.illumination * 100).toFixed(1)} %</span>` : ''
     ].filter(Boolean).join('');
   }
 
