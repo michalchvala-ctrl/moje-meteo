@@ -731,11 +731,40 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   background: radial-gradient(circle at 35% 35%, #fef08a, #f59e0b);
   box-shadow: 0 0 32px rgba(251, 191, 36, .7);
 }
-.live-moon {
-  width: 54px;
-  height: 54px;
+.live-moon-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.live-moon-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.live-moon,
+.moon-phase-svg {
+  width: clamp(48px, 12vw, 64px);
+  height: clamp(48px, 12vw, 64px);
   display: block;
   filter: drop-shadow(0 0 12px rgba(241, 245, 249, .45));
+}
+.live-moon-label {
+  margin: 0;
+  font-size: clamp(.58rem, 2.2vw, .68rem);
+  font-weight: 600;
+  color: rgba(226, 232, 240, .92);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 88px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .45);
+  white-space: nowrap;
+}
+[data-theme="light"] .live-moon-label {
+  color: rgba(30, 41, 59, .85);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, .6);
 }
 
 .live-mounts {

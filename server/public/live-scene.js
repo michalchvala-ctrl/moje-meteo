@@ -1,19 +1,12 @@
 /** Naživo — výpočty a vykreslenie animovanej scény počasia */
 
 const LIVE_TZ = 'Europe/Bratislava';
-const MOON_SYNODIC = 29.530588853;
-const MOON_EPOCH = Date.UTC(2000, 0, 6, 18, 14, 0);
 
 let liveSceneAtOverride = null;
 
 function normDegLive(deg) {
   return ((deg % 360) + 360) % 360;
 }
-
-const MOON_NAMES = [
-  'Nov', 'Dorastajúci srp', 'Prvý štvrť', 'Dorastajúci Mesiac',
-  'Spln', 'Ubúdajúci Mesiac', 'Posledný štvrť', 'Ubúdajúci srp'
-];
 
 function setLiveSceneTime(at) {
   liveSceneAtOverride = at;
@@ -124,67 +117,12 @@ function liveCelestialPos(progress) {
   };
 }
 
-function moonFullCirclePath(cx, cy, r) {
-  return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
-}
-
-/**
- * Osvetlená časť disku — oblúk terminatora (prienik dvoch rovnakých kruhov).
- * Dorastá: svetlo vpravo, ubúda: vľavo (severná pologuľa).
- */
-function moonLitPath(cx, cy, r, illumination, ageDays) {
-  const k = Math.max(0, Math.min(1, illumination));
-  if (k <= 0.001) return '';
-  if (k >= 0.999) return moonFullCirclePath(cx, cy, r);
-
-  const waxing = ageDays < MOON_SYNODIC / 2;
-  const shift = 2 * r * k;
-  const tx = waxing ? cx - shift : cx + shift;
-  const d = Math.abs(tx - cx);
-  if (d < 0.05) return '';
-  if (d >= 2 * r - 0.05) return moonFullCirclePath(cx, cy, r);
-
-  const midX = (cx + tx) / 2;
-  const h = Math.sqrt(Math.max(0, r * r - (d * d) / 4));
-  const x1 = midX;
-  const y1 = cy - h;
-  const x2 = midX;
-  const y2 = cy + h;
-
-  const outerLarge = 1;
-  const outerSweep = waxing ? 1 : 0;
-  const innerLarge = 0;
-  const innerSweep = waxing ? 0 : 1;
-
-  return `M ${x1} ${y1} A ${r} ${r} 0 ${outerLarge} ${outerSweep} ${x2} ${y2} A ${r} ${r} 0 ${innerLarge} ${innerSweep} ${x1} ${y1} Z`;
-}
-
-function moonPhaseNameFromAge(age) {
-  const s = MOON_SYNODIC;
-  if (age < s * 0.03) return MOON_NAMES[0];
-  if (age < s * 0.22) return MOON_NAMES[1];
-  if (age < s * 0.28) return MOON_NAMES[2];
-  if (age < s * 0.47) return 'Dorastajúci vypuklý Mesiac';
-  if (age < s * 0.53) return MOON_NAMES[4];
-  if (age < s * 0.72) return 'Ubúdajúci vypuklý Mesiac';
-  if (age < s * 0.78) return MOON_NAMES[6];
-  return MOON_NAMES[7];
-}
-
 function getMoonPhase(date = new Date()) {
-  const days = (date.getTime() - MOON_EPOCH) / 86400000;
-  const age = ((days % MOON_SYNODIC) + MOON_SYNODIC) % MOON_SYNODIC;
-  const phase = age / MOON_SYNODIC;
-  const illumination = (1 - Math.cos(phase * 2 * Math.PI)) / 2;
-  const waxing = age < MOON_SYNODIC / 2;
-  return {
-    phase,
-    age,
-    illumination,
-    waxing,
-    name: moonPhaseNameFromAge(age),
-    visible: illumination > 0.03
-  };
+  if (typeof MoonPhase !== 'undefined') {
+    const m = MoonPhase.computeMoonPhase(date);
+    return { ...m, visible: m.illumination > 0.03 };
+  }
+  return { phase: 0, age: 0, illumination: 0, waxing: true, name: 'Nov', label: 'Nov', visible: false };
 }
 
 function liveCloudiness(latest, dayPhase) {
@@ -429,13 +367,11 @@ async function renderLiveScene(latest) {
   );
 
   const moonSvg = document.getElementById('liveMoon');
-  const moonLit = document.getElementById('liveMoonLit');
   if (moonSvg && showMoon) {
     moonSvg.style.opacity = String(0.55 + s.moon.illumination * 0.45);
   }
-  if (moonLit) {
-    const d = moonLitPath(32, 32, 27, s.moon.illumination, s.moon.age);
-    moonLit.setAttribute('d', d || 'M 32 32 m 0 0');
+  if (typeof MoonPhase !== 'undefined') {
+    MoonPhase.applyMoonToElement(moonSvg, s.moon);
   }
 
   const vane = document.getElementById('liveVane');
@@ -493,8 +429,7 @@ async function renderLiveScene(latest) {
     const parts = [];
     if (s.customTime) parts.push('Náhľad');
     if (s.isNight || s.moon.visible) {
-      const pct = Math.round(s.moon.illumination * 100);
-      parts.push(`${s.moon.name} (${pct} %)`);
+      parts.push(s.moon.label || s.moon.name);
     } else if (!s.customTime) {
       parts.push(s.dayPhase === 'dawn' ? 'Úsvit' : s.dayPhase === 'dusk' ? 'Súmrak' : 'Deň');
     }
@@ -511,7 +446,7 @@ async function renderLiveScene(latest) {
       s.windSpeed != null ? `<span>💨 ${Number(s.windSpeed).toFixed(1)} km/h</span>` : '',
       s.windFrom != null ? `<span>🧭 ${Math.round(s.windFrom)}° ${typeof degToCompassShort === 'function' ? degToCompassShort(s.windFrom) : ''}</span>` : '',
       s.rainRate > 0 ? `<span>🌧 ${Number(s.rainRate).toFixed(1)} mm/h</span>` : '',
-      s.moon.visible ? `<span>🌙 ${(s.moon.illumination * 100).toFixed(1)} %</span>` : ''
+      s.moon.visible ? `<span>🌙 ${s.moon.illuminationPct ?? (s.moon.illumination * 100).toFixed(1)} %</span>` : ''
     ].filter(Boolean).join('');
   }
 
