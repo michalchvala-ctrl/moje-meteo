@@ -148,7 +148,7 @@ function renderAboutApp(cfg) {
   const el = $('#aboutAppLine');
   if (!el || !cfg) return;
   const v = cfg.version || '?';
-  el.textContent = `Verzia ${v} · Self-hosted · PWA · Ecowitt · 🌤️ Naživo · 📅 Predpoveď · 📈 Grafy · 🔔 Upozornenia · import Excel`;
+  el.textContent = `Verzia ${v} · Self-hosted · PWA · Ecowitt · 🌤️ Naživo · 📅 Predpoveď · 🌧️ Radar · 📈 Grafy · 🔔 Upozornenia · import Excel`;
 }
 
 async function initAuth() {
@@ -241,7 +241,8 @@ async function loadApp() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  const v = state.config?.version || '1';
+  navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(v)}`).catch(() => {});
 }
 
 async function loadCurrent(silent = false) {
