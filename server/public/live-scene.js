@@ -124,16 +124,39 @@ function liveCelestialPos(progress) {
   };
 }
 
-/** Osvetlený výrez disku — dorastá = pás vpravo, ubúda = pás vľavo (severná pologuľa). */
-function moonClipRect(cx, cy, r, illumination, ageDays) {
+function moonFullCirclePath(cx, cy, r) {
+  return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
+}
+
+/**
+ * Osvetlená časť disku — oblúk terminatora (prienik dvoch rovnakých kruhov).
+ * Dorastá: svetlo vpravo, ubúda: vľavo (severná pologuľa).
+ */
+function moonLitPath(cx, cy, r, illumination, ageDays) {
   const k = Math.max(0, Math.min(1, illumination));
+  if (k <= 0.001) return '';
+  if (k >= 0.999) return moonFullCirclePath(cx, cy, r);
+
   const waxing = ageDays < MOON_SYNODIC / 2;
-  const w = Math.max(0, 2 * r * k);
-  const h = 2 * r;
-  const y = cy - r;
-  if (w <= 0.01) return { x: cx, y, width: 0, height: h };
-  if (waxing) return { x: cx + r - w, y, width: w, height: h };
-  return { x: cx - r, y, width: w, height: h };
+  const shift = 2 * r * k;
+  const tx = waxing ? cx - shift : cx + shift;
+  const d = Math.abs(tx - cx);
+  if (d < 0.05) return '';
+  if (d >= 2 * r - 0.05) return moonFullCirclePath(cx, cy, r);
+
+  const midX = (cx + tx) / 2;
+  const h = Math.sqrt(Math.max(0, r * r - (d * d) / 4));
+  const x1 = midX;
+  const y1 = cy - h;
+  const x2 = midX;
+  const y2 = cy + h;
+
+  const outerLarge = 1;
+  const outerSweep = waxing ? 1 : 0;
+  const innerLarge = 0;
+  const innerSweep = waxing ? 0 : 1;
+
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${outerLarge} ${outerSweep} ${x2} ${y2} A ${r} ${r} 0 ${innerLarge} ${innerSweep} ${x1} ${y1} Z`;
 }
 
 function moonPhaseNameFromAge(age) {
@@ -406,16 +429,13 @@ async function renderLiveScene(latest) {
   );
 
   const moonSvg = document.getElementById('liveMoon');
-  const moonClip = document.getElementById('liveMoonClipRect');
+  const moonLit = document.getElementById('liveMoonLit');
   if (moonSvg && showMoon) {
     moonSvg.style.opacity = String(0.55 + s.moon.illumination * 0.45);
   }
-  if (moonClip) {
-    const rect = moonClipRect(32, 32, 27, s.moon.illumination, s.moon.age);
-    moonClip.setAttribute('x', String(rect.x));
-    moonClip.setAttribute('y', String(rect.y));
-    moonClip.setAttribute('width', String(rect.width));
-    moonClip.setAttribute('height', String(rect.height));
+  if (moonLit) {
+    const d = moonLitPath(32, 32, 27, s.moon.illumination, s.moon.age);
+    moonLit.setAttribute('d', d || 'M 32 32 m 0 0');
   }
 
   const vane = document.getElementById('liveVane');

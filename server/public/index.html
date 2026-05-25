@@ -8,7 +8,7 @@
   <link rel="manifest" href="/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Moje meteo" />
-  <link rel="stylesheet" href="/styles.css?v=1.4.7" />
+  <link rel="stylesheet" href="/styles.css?v=1.4.8" />
   <style>
     /* Kritické mobilné menu — funguje aj pri starom SW cache */
     @media (max-width: 820px) {
@@ -199,16 +199,13 @@
               <div class="live-celestial-wrap" id="liveMoonWrap">
                 <svg class="live-moon" id="liveMoon" viewBox="0 0 64 64" aria-hidden="true">
                   <defs>
-                    <clipPath id="liveMoonClip">
-                      <rect id="liveMoonClipRect" x="32" y="5" width="0" height="54"/>
-                    </clipPath>
                     <radialGradient id="liveMoonGrad" cx="40%" cy="35%">
                       <stop offset="0%" stop-color="#ffffff"/>
                       <stop offset="100%" stop-color="#cbd5e1"/>
                     </radialGradient>
                   </defs>
-                  <circle cx="32" cy="32" r="27" fill="rgba(30,41,59,.55)"/>
-                  <circle cx="32" cy="32" r="27" fill="url(#liveMoonGrad)" clip-path="url(#liveMoonClip)"/>
+                  <circle cx="32" cy="32" r="27" fill="rgba(30,41,59,.6)"/>
+                  <path id="liveMoonLit" fill="url(#liveMoonGrad)" d=""/>
                   <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(148,163,184,.35)" stroke-width="1"/>
                 </svg>
               </div>
@@ -496,9 +493,9 @@
     </nav>
   </div>
 
-  <script src="/wind-dir.js?v=1.4.7"></script>
-  <script src="/live-scene.js?v=1.4.7"></script>
-  <script src="/radar.js?v=1.4.7"></script>
-  <script src="/app.js?v=1.4.7"></script>
+  <script src="/wind-dir.js?v=1.4.8"></script>
+  <script src="/live-scene.js?v=1.4.8"></script>
+  <script src="/radar.js?v=1.4.8"></script>
+  <script src="/app.js?v=1.4.8"></script>
 </body>
 </html>
