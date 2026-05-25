@@ -338,7 +338,14 @@ function renderLiveScene(latest) {
   const vane = document.getElementById('liveVane');
   if (vane) {
     const deg = s.windFrom ?? 0;
-    vane.setAttribute('transform', `translate(200,82) rotate(${deg})`);
+    vane.setAttribute('transform', `rotate(${deg})`);
+    const clock = vane.closest('.live-wind-clock');
+    if (clock) {
+      const lbl = s.windFrom != null
+        ? `Smer vetra: fúka zo ${Math.round(deg)}°`
+        : 'Smer vetra: —';
+      clock.setAttribute('aria-label', lbl);
+    }
   }
 
   const treeL = document.getElementById('liveTreeL');
