@@ -989,6 +989,20 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   color: var(--text);
   line-height: 1.4;
 }
+.forecast-restore-banner {
+  margin: 0 0 .75rem;
+  padding: .55rem .75rem;
+  background: color-mix(in srgb, var(--warning, #f59e0b) 18%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--warning, #f59e0b) 45%, var(--border));
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+  line-height: 1.45;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .65rem;
+}
+.forecast-restore-banner.hidden { display: none; }
 .forecast-source { margin-top: 1rem; }
 .forecast-source a { color: var(--primary); }
 

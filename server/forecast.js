@@ -74,13 +74,26 @@ function getConfig() {
   };
 }
 
+function isNearDefaultCoords(lat, lon) {
+  if (lat == null || lon == null) return true;
+  return Math.abs(lat - DEFAULT_LAT) <= 0.02 && Math.abs(lon - DEFAULT_LON) <= 0.02;
+}
+
+/** Skutočne uložená lokalita — nie SQL default „Bratislava“. */
 function isForecastSaved(s) {
-  const name = (s.forecast_location_name || '').trim();
-  if (name) return true;
   const lat = s.forecast_lat != null ? Number(s.forecast_lat) : null;
   const lon = s.forecast_lon != null ? Number(s.forecast_lon) : null;
   if (lat == null || lon == null) return false;
-  return Math.abs(lat - DEFAULT_LAT) > 0.02 || Math.abs(lon - DEFAULT_LON) > 0.02;
+  const name = (s.forecast_location_name || '').trim();
+  if (isNearDefaultCoords(lat, lon) && (!name || name === DEFAULT_NAME)) return false;
+  return !!name || !isNearDefaultCoords(lat, lon);
+}
+
+function displayLabel(name, lat, lon) {
+  const n = (name || '').trim();
+  if (n && !(isNearDefaultCoords(lat, lon) && n === DEFAULT_NAME)) return n;
+  if (isNearDefaultCoords(lat, lon)) return DEFAULT_NAME;
+  return n || 'Vlastná lokalita';
 }
 
 function clientSettings() {
@@ -89,13 +102,14 @@ function clientSettings() {
   const lat = s.forecast_lat != null ? Number(s.forecast_lat) : DEFAULT_LAT;
   const lon = s.forecast_lon != null ? Number(s.forecast_lon) : DEFAULT_LON;
   const name = (s.forecast_location_name || '').trim();
+  const saved = isForecastSaved(s);
   return {
     lat,
     lon,
-    name,
-    label: name || DEFAULT_NAME,
+    name: saved ? name : '',
+    label: saved ? displayLabel(name, lat, lon) : '',
     days,
-    saved: isForecastSaved(s)
+    saved
   };
 }
 
@@ -103,9 +117,13 @@ function updateSettings(f) {
   const cur = getRow();
   const lat = f.lat != null ? parseFloat(f.lat) : cur.forecast_lat;
   const lon = f.lon != null ? parseFloat(f.lon) : cur.forecast_lon;
-  const name = f.name !== undefined
+  let name = f.name !== undefined
     ? String(f.name || '').trim()
-    : cur.forecast_location_name;
+    : (cur.forecast_location_name || '').trim();
+  if (f.name !== undefined && !name) {
+    const prev = (cur.forecast_location_name || '').trim();
+    if (prev) name = prev;
+  }
   const days = f.days != null
     ? Math.max(1, Math.min(7, parseInt(f.days, 10) || 7))
     : cur.forecast_days;
@@ -115,6 +133,9 @@ function updateSettings(f) {
   }
   if (lon != null && (isNaN(lon) || lon < -180 || lon > 180)) {
     throw new Error('Neplatná zemepisná dĺžka.');
+  }
+  if ((f.lat != null || f.lon != null || f.name !== undefined) && !name) {
+    throw new Error('Zadaj názov lokality (napr. Skalica).');
   }
 
   db.prepare(`UPDATE app_settings SET

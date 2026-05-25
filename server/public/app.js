@@ -657,6 +657,62 @@ function formatCoord(n) {
   return String(Number(n));
 }
 
+const FORECAST_LOC_STORAGE_KEY = 'moje_meteo_forecast_v1';
+
+function saveForecastLocalBackup(fc) {
+  if (!fc?.lat || !fc?.lon) return;
+  const name = (fc.name || fc.label || '').trim();
+  if (!name) return;
+  try {
+    localStorage.setItem(FORECAST_LOC_STORAGE_KEY, JSON.stringify({
+      lat: Number(fc.lat),
+      lon: Number(fc.lon),
+      name,
+      days: fc.days || 7,
+      savedAt: Date.now()
+    }));
+  } catch (_) { /* quota */ }
+}
+
+function loadForecastLocalBackup() {
+  try {
+    const raw = localStorage.getItem(FORECAST_LOC_STORAGE_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (o?.lat == null || o?.lon == null || !o?.name) return null;
+    return o;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Pre radar / predpoveď — uložená lokalita zo servera alebo záloha v prehliadači. */
+function getMeteoForecastLocation() {
+  const fc = state.settings?.forecast;
+  if (fc?.saved && fc.lat != null && fc.lon != null) {
+    return {
+      lat: Number(fc.lat),
+      lon: Number(fc.lon),
+      name: (fc.name || fc.label || '').trim() || 'Lokalita',
+      days: fc.days || 7,
+      source: 'server'
+    };
+  }
+  const backup = loadForecastLocalBackup();
+  if (backup) {
+    return {
+      lat: Number(backup.lat),
+      lon: Number(backup.lon),
+      name: backup.name,
+      days: backup.days || 7,
+      source: 'backup'
+    };
+  }
+  return null;
+}
+
+window.getMeteoForecastLocation = getMeteoForecastLocation;
+
 async function fillForecastSettingsForm(fcIn) {
   const lat = $('#forecastLat');
   const lon = $('#forecastLon');
@@ -680,25 +736,51 @@ async function fillForecastSettingsForm(fcIn) {
       return;
     }
   }
+  const backup = loadForecastLocalBackup();
+  const restore = $('#forecastRestoreBanner');
+
   if (!fc) {
     if (summary) {
       summary.textContent = 'Lokalita ešte nie je uložená — vyhľadaj mesto a klikni „Uložiť lokalitu“.';
     }
+    if (backup && restore) {
+      restore.classList.remove('hidden');
+      restore.querySelector('.forecast-restore-label').textContent =
+        `${backup.name} (${formatCoord(backup.lat)}, ${formatCoord(backup.lon)})`;
+    } else if (restore) {
+      restore.classList.add('hidden');
+    }
     return;
   }
+
   const label = (fc.name || fc.label || '').trim();
-  if (lat) lat.value = formatCoord(fc.lat);
-  if (lon) lon.value = formatCoord(fc.lon);
+  if (lat) lat.value = fc.saved ? formatCoord(fc.lat) : '';
+  if (lon) lon.value = fc.saved ? formatCoord(fc.lon) : '';
   if (name) name.value = label;
   if (query) query.value = label;
   if (days) days.value = String(fc.days || 7);
+
+  if (restore) {
+    if (!fc.saved && backup) {
+      restore.classList.remove('hidden');
+      restore.querySelector('.forecast-restore-label').textContent =
+        `${backup.name} (${formatCoord(backup.lat)}, ${formatCoord(backup.lon)})`;
+    } else {
+      restore.classList.add('hidden');
+    }
+  }
+
   if (summary) {
     if (fc.saved) {
       summary.textContent = label
         ? `Uložené na serveri: ${label} · ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`
         : `Uložené na serveri: ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`;
+    } else if (backup) {
+      summary.textContent =
+        'Na serveri nie je uložená lokalita (zostala len predvolená Bratislava). Môžeš obnoviť zálohu z prehliadača nižšie.';
     } else {
-      summary.textContent = 'Lokalita ešte nie je uložená na serveri — skontroluj údaje a klikni „Uložiť lokalitu“.';
+      summary.textContent =
+        'Lokalita ešte nie je uložená — vyhľadaj mesto (napr. Skalica), vyplň súradnice a klikni „Uložiť lokalitu“.';
     }
   }
 }
@@ -752,6 +834,20 @@ async function loadForecast() {
 
 $('#btnForecastRefresh')?.addEventListener('click', () => loadForecast());
 
+$('#btnForecastRestore')?.addEventListener('click', async () => {
+  const backup = loadForecastLocalBackup();
+  if (!backup) {
+    toast('Žiadna záloha lokality v prehliadači.', 'error');
+    return;
+  }
+  $('#forecastLat').value = formatCoord(backup.lat);
+  $('#forecastLon').value = formatCoord(backup.lon);
+  $('#forecastName').value = backup.name;
+  $('#forecastLocationQuery').value = backup.name;
+  if (backup.days) $('#forecastDays').value = String(backup.days);
+  toast(`Obnovené do formulára: ${backup.name}. Klikni „Uložiť lokalitu“ pre uloženie na server.`);
+});
+
 $('#btnOpenRadar')?.addEventListener('click', () => {
   const btn = $('#nav .nav-link[data-view="radar"]');
   btn?.click();
@@ -798,6 +894,10 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
     toast('Zadaj platné súradnice (bodka alebo čiarka).', 'error');
     return;
   }
+  if (!name) {
+    toast('Zadaj názov lokality (napr. Skalica).', 'error');
+    return;
+  }
   const justSaved = {
     lat,
     lon,
@@ -818,7 +918,9 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
       state.settings = s;
       fc = s?.forecast;
     }
-    await fillForecastSettingsForm(fc || justSaved);
+    const savedFc = fc || justSaved;
+    saveForecastLocalBackup({ ...savedFc, saved: true });
+    await fillForecastSettingsForm(savedFc);
     toast('Lokalita predpovede uložená');
     if ($('#view-forecast')?.classList.contains('active')) loadForecast();
     if ($('#view-radar')?.classList.contains('active') && typeof initRadarView === 'function') {

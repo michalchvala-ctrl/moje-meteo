@@ -8,7 +8,7 @@
   const COLOR = 2;
   const OPTIONS = '1_1';
   const ANIM_MS = 550;
-  const DEFAULT = { lat: 48.1486, lon: 17.1077, name: 'Bratislava', zoom: 8 };
+  const FALLBACK = { lat: 48.1486, lon: 17.1077, name: 'Bratislava', zoom: 8 };
 
   let map = null;
   let radarLayer = null;
@@ -62,21 +62,34 @@
   }
 
   async function resolveLocation() {
+    if (typeof getMeteoForecastLocation === 'function') {
+      const loc = getMeteoForecastLocation();
+      if (loc) {
+        return {
+          lat: loc.lat,
+          lon: loc.lon,
+          name: loc.name,
+          zoom: 9,
+          source: loc.source
+        };
+      }
+    }
     if (typeof api === 'function') {
       try {
         const s = await api('/api/settings');
         const fc = s?.forecast;
-        if (fc?.lat != null && fc?.lon != null) {
+        if (fc?.saved && fc.lat != null && fc.lon != null) {
           return {
             lat: Number(fc.lat),
             lon: Number(fc.lon),
-            name: fc.label || fc.name || 'Lokalita',
-            zoom: 9
+            name: (fc.name || fc.label || '').trim() || 'Lokalita',
+            zoom: 9,
+            source: 'server'
           };
         }
       } catch (_) { /* ignore */ }
     }
-    return { ...DEFAULT };
+    return { ...FALLBACK, source: 'fallback' };
   }
 
   function tileUrl(path) {
@@ -238,7 +251,12 @@
       const updated = frames[frameIdx]
         ? formatFrameTime(frames[frameIdx].time)
         : '—';
-      setMeta(`${loc.name} · ${frames.length} snímok · posledná ${updated}`);
+      const srcHint = loc.source === 'backup'
+        ? ' (záloha z prehliadača — ulož aj v Nastaveniach)'
+        : loc.source === 'fallback'
+          ? ' — nastav lokalitu v Predpovedi / Nastaveniach'
+          : '';
+      setMeta(`${loc.name} · ${frames.length} snímok · posledná ${updated}${srcHint}`);
       if (map) map.invalidateSize();
     } catch (e) {
       setMeta(e.message || 'Radar sa nepodarilo načítať.', true);

@@ -7,6 +7,7 @@ git pull origin main
 echo "Verzia v repozitári: $(cat VERSION 2>/dev/null || echo '?')"
 
 podman cp server/forecast.js moje-meteo:/app/forecast.js
+# forecast.js = logika uloženej lokality (Skalica vs. predvolená BA)
 podman cp server/server.js moje-meteo:/app/server.js
 podman cp server/public/. moje-meteo:/app/public/
 podman cp VERSION moje-meteo:/app/VERSION
