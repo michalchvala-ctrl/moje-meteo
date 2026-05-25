@@ -395,10 +395,10 @@ async function renderLiveScene(latest) {
   if (vane) {
     const deg = s.windFrom != null ? s.windFrom : null;
     if (deg != null) {
-      vane.setAttribute('transform', `rotate(${deg})`);
+      vane.setAttribute('transform', `rotate(${deg} 0 0)`);
       vane.dataset.deg = String(deg);
     } else {
-      vane.setAttribute('transform', 'rotate(0)');
+      vane.setAttribute('transform', 'rotate(0 0 0)');
       vane.dataset.deg = '';
     }
     const clock = vane.closest('.live-wind-clock');
