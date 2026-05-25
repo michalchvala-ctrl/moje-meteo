@@ -714,6 +714,8 @@ function drawWindRose(rose) {
     options: {
       responsive: true,
       maintainAspectRatio: true,
+      aspectRatio: 1,
+      layout: { padding: 4 },
       plugins: {
         legend: { display: false },
         tooltip: {
