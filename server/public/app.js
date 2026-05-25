@@ -148,7 +148,7 @@ function renderAboutApp(cfg) {
   const el = $('#aboutAppLine');
   if (!el || !cfg) return;
   const v = cfg.version || '?';
-  el.textContent = `Verzia ${v} · Self-hosted · PWA · Ecowitt · 🌤️ Naživo · 📅 Predpoveď · 🌧️ Radar · 📈 Grafy · 🔔 Upozornenia · import Excel`;
+  el.textContent = `Verzia ${v} · Self-hosted · PWA · Ecowitt · 📅 Predpoveď · 🌧️ Radar · 📈 Grafy · 🔔 Upozornenia · import Excel`;
 }
 
 async function initAuth() {
@@ -222,7 +222,6 @@ $$('#nav .nav-link').forEach(btn => {
     if (view === 'alerts') loadAlertsList();
     if (view === 'settings') loadSettingsForms();
     if (view === 'dashboard') loadCurrent();
-    if (view === 'live') await renderLiveScene(state.current?.latest);
   });
 });
 
@@ -232,7 +231,6 @@ async function loadApp() {
   await fillForecastSettingsForm(state.settings?.forecast);
   await loadCurrent();
   registerServiceWorker();
-  initLiveTimeControls();
   setInterval(() => loadCurrent(true), 60 * 1000);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') loadCurrent(true);
@@ -298,9 +296,6 @@ async function renderCurrent() {
     $('#todayChata').textContent = fmtTemp(today.chata_temp_avg);
   }
 
-  if ($('#view-live')?.classList.contains('active')) {
-    await renderLiveScene(latest);
-  }
 }
 
 function renderAlertBanners() {
