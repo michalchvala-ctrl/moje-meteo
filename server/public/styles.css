@@ -721,12 +721,26 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 .live-window { fill: #87ceeb; stroke: #64748b; stroke-width: 1; }
 .live-door { fill: #5c3d2e; }
 .live-wind-clock { pointer-events: none; }
-.live-wind-pedestal { fill: #78716c; }
+.live-roof-window-outer {
+  fill: #6b3f1f;
+  stroke: #4a2c14;
+  stroke-width: 1;
+}
+.live-roof-window-frame {
+  fill: #8b4518;
+  stroke: #5c3d2e;
+  stroke-width: 1.4;
+}
+.live-roof-window-rim {
+  fill: #5c3d2e;
+  stroke: #4a2c14;
+  stroke-width: 0.8;
+}
 .live-wind-dial-face {
-  fill: #f8fafc;
-  stroke: #64748b;
-  stroke-width: 1.1;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,.15));
+  fill: rgba(224, 242, 254, .92);
+  stroke: #7dd3fc;
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.12));
 }
 .live-wind-tick {
   stroke: #94a3b8;
@@ -748,7 +762,8 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 }
 .live-wind-hand-tip { fill: #dc2626; }
 .live-wind-hub { fill: #57534e; stroke: #44403c; stroke-width: 0.5; }
-[data-theme="dark"] .live-wind-dial-face { fill: #e2e8f0; stroke: #94a3b8; }
+[data-theme="dark"] .live-roof-window-frame { fill: #7c4a2a; stroke: #5c3d2e; }
+[data-theme="dark"] .live-wind-dial-face { fill: rgba(30, 58, 90, .85); stroke: #38bdf8; }
 [data-theme="dark"] .live-wind-label { fill: #475569; }
 .live-snow-ground {
   fill: rgba(255,255,255,.85);
