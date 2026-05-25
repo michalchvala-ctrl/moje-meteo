@@ -1139,6 +1139,47 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 [data-theme="dark"] .radar-map { background: #0f172a; }
 [data-theme="dark"] .radar-map-fab { background: var(--bg-elev); }
 
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr;
+  gap: .5rem 1rem;
+  margin: 0;
+  font-size: .92rem;
+}
+.status-grid dt {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.status-grid dd {
+  margin: 0;
+  font-weight: 600;
+}
+.status-grid dd.sys-error {
+  font-weight: 500;
+  word-break: break-word;
+}
+.status-grid dd.sys-error.is-ok {
+  color: var(--good);
+  font-weight: 600;
+}
+.status-grid dd.sys-error.has-error {
+  color: var(--danger);
+}
+
+.chart-wrap-rose {
+  max-width: 420px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  min-height: 280px;
+}
+
 @media (max-width: 480px) {
   .nav-link { min-width: 50px; font-size: .58rem; }
   .forecast-grid { grid-template-columns: repeat(2, 1fr); }

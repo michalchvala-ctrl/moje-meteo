@@ -12,6 +12,8 @@ const forecast = require('./forecast');
 const weatherImport = require('./weather-import');
 const alerts = require('./alerts');
 const { chartPeriodRangeIso } = require('./chart-period');
+const meteoUtils = require('./meteo-utils');
+const exportData = require('./export-data');
 
 const PORT = parseInt(process.env.PORT || '8081', 10);
 
@@ -282,10 +284,48 @@ app.post('/api/ecowitt/test', requireAuth, async (req, res) => {
 
 app.get('/api/current', requireAuth, (req, res) => {
   const latest = ecowitt.getLatestSample();
+  if (latest) {
+    latest.feels_like_c = meteoUtils.feelsLikeC(
+      latest.outdoor_temp_c,
+      latest.wind_speed_kmh,
+      latest.outdoor_humidity
+    );
+  }
   const today = ecowitt.getTodayDaily();
   const bannerAlerts = alerts.getActiveBannerAlerts();
   const settings = settingsPayload();
   res.json({ latest, today, alerts: bannerAlerts, settings });
+});
+
+app.get('/api/system-status', requireAuth, (req, res) => {
+  res.json(meteoUtils.getSystemStatus(ecowitt));
+});
+
+app.get('/api/wind-rose', requireAuth, (req, res) => {
+  const period = String(req.query.period || '7d');
+  const { from: fromIso, to: toIso } = chartPeriodRangeIso(
+    period === '30d' ? '30d' : '7d'
+  );
+  res.json({
+    period: period === '30d' ? '30d' : '7d',
+    range: { from: fromIso, to: toIso },
+    rose: meteoUtils.buildWindRose(fromIso, toIso)
+  });
+});
+
+app.get('/api/export', requireAuth, (req, res) => {
+  try {
+    const from = String(req.query.from || '').trim() || null;
+    const to = String(req.query.to || '').trim() || null;
+    const format = String(req.query.format || 'csv').trim();
+    const out = exportData.exportSamples({ from, to, format });
+    res.setHeader('Content-Type', out.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${out.filename}"`);
+    res.setHeader('X-Export-Count', String(out.count));
+    res.send(out.body);
+  } catch (e) {
+    res.status(400).json({ error: e.message || 'Export zlyhal' });
+  }
 });
 
 function querySamples(from, to) {

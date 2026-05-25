@@ -7,8 +7,10 @@ git pull origin main
 echo "Verzia v repozitári: $(cat VERSION 2>/dev/null || echo '?')"
 
 podman cp server/forecast.js moje-meteo:/app/forecast.js
-# forecast.js = logika uloženej lokality (Skalica vs. predvolená BA)
 podman cp server/server.js moje-meteo:/app/server.js
+podman cp server/ecowitt.js moje-meteo:/app/ecowitt.js
+podman cp server/meteo-utils.js moje-meteo:/app/meteo-utils.js
+podman cp server/export-data.js moje-meteo:/app/export-data.js
 podman cp server/public/. moje-meteo:/app/public/
 podman cp VERSION moje-meteo:/app/VERSION
 
@@ -21,7 +23,8 @@ echo ""
 
 echo "--- súbory v kontajneri ---"
 podman exec moje-meteo cat /app/VERSION
-podman exec moje-meteo test -f /app/public/radar.js && echo "OK: radar.js" || echo "CHÝBA: radar.js"
+podman exec moje-meteo test -f /app/meteo-utils.js && echo "OK: meteo-utils.js" || echo "CHÝBA: meteo-utils.js"
+podman exec moje-meteo test -f /app/export-data.js && echo "OK: export-data.js" || echo "CHÝBA: export-data.js"
 podman exec moje-meteo grep -o 'v=1\.[0-9.]*' /app/public/index.html | head -3
 
 echo ""

@@ -6,7 +6,8 @@ const state = {
   settings: null,
   current: null,
   chartPeriod: '24h',
-  chartResolution: 'auto'
+  chartResolution: 'auto',
+  windRosePeriod: '7d'
 };
 
 async function api(path, opts = {}) {
@@ -220,7 +221,10 @@ $$('#nav .nav-link').forEach(btn => {
     if (view === 'forecast') loadForecast();
     if (view === 'radar' && typeof initRadarView === 'function') await initRadarView();
     if (view === 'alerts') loadAlertsList();
-    if (view === 'settings') loadSettingsForms();
+    if (view === 'settings') {
+      loadSettingsForms();
+      loadSystemStatus();
+    }
     if (view === 'dashboard') loadCurrent();
   });
 });
@@ -274,6 +278,16 @@ async function renderCurrent() {
   }
 
   $('#outTemp').textContent = fmtTemp(latest?.outdoor_temp_c);
+  const feels = latest?.feels_like_c;
+  const feelsEl = $('#outFeels');
+  if (feels != null && latest?.outdoor_temp_c != null
+    && Math.abs(feels - latest.outdoor_temp_c) >= 0.5) {
+    feelsEl.textContent = `Pocitovo ${fmtTemp(feels)}`;
+    feelsEl.classList.remove('hidden');
+  } else {
+    feelsEl.textContent = '';
+    feelsEl.classList.add('hidden');
+  }
   $('#outHum').textContent = `Vlhkosť ${fmtPct(latest?.outdoor_humidity)}`;
   $('#chataTemp').textContent = fmtTemp(latest?.chata_temp_c);
   $('#chataHum').textContent = `Vlhkosť ${fmtPct(latest?.chata_humidity)}`;
@@ -288,12 +302,26 @@ async function renderCurrent() {
   $('#uvVal').textContent = latest?.uv_index != null
     ? `UV ${Number(latest.uv_index).toFixed(1)}` : 'UV —';
 
+  const setToday = (id, text) => { const el = $(id); if (el) el.textContent = text; };
   if (today) {
-    $('#todayOutTemp').textContent = today.outdoor_temp_min != null
+    setToday('#todayOutTemp', today.outdoor_temp_min != null
       ? `${fmtTemp(today.outdoor_temp_min)} / ${fmtTemp(today.outdoor_temp_max)}`
-      : fmtTemp(today.outdoor_temp_avg);
-    $('#todayOutHum').textContent = fmtPct(today.outdoor_humidity_avg);
-    $('#todayChata').textContent = fmtTemp(today.chata_temp_avg);
+      : fmtTemp(today.outdoor_temp_avg));
+    setToday('#todayOutHum', fmtPct(today.outdoor_humidity_avg));
+    setToday('#todayChata', fmtTemp(today.chata_temp_avg));
+    setToday('#todayWindMax', today.wind_speed_max_kmh != null
+      ? `${Number(today.wind_speed_max_kmh).toFixed(1)} km/h` : '—');
+    setToday('#todayGustMax', today.wind_gust_max_kmh != null
+      ? `${Number(today.wind_gust_max_kmh).toFixed(1)} km/h` : '—');
+    setToday('#todayRain', today.rain_day_mm != null
+      ? `${Number(today.rain_day_mm).toFixed(1)} mm` : '—');
+    setToday('#todayUvMax', today.uv_max != null
+      ? Number(today.uv_max).toFixed(1) : '—');
+    setToday('#todaySamples', today.sample_count != null
+      ? String(today.sample_count) : '—');
+  } else {
+    ['#todayOutTemp', '#todayOutHum', '#todayChata', '#todayWindMax', '#todayGustMax',
+      '#todayRain', '#todayUvMax', '#todaySamples'].forEach((id) => setToday(id, '—'));
   }
 
 }
@@ -327,6 +355,7 @@ $('#btnSyncNow').addEventListener('click', async () => {
   try {
     await api('/api/sync', { method: 'POST' });
     toast('Sync OK');
+    if ($('#view-settings').classList.contains('active')) loadSystemStatus();
     await loadCurrent();
   } catch (e) {
     toast(e.message, 'error');
@@ -586,12 +615,172 @@ async function loadCharts() {
   if (isDaily && rows.length < 3) {
     toast('Málo denných dát — importuj Excel alebo počkaj na sync.', 'error');
   }
+  await loadWindRose();
 }
+
+function drawWindRose(rose) {
+  const el = document.getElementById('chartWindRose');
+  if (!el || typeof Chart === 'undefined') return;
+  const existing = Chart.getChart(el);
+  if (existing) existing.destroy();
+  if (!rose?.total) return;
+  const colors = rose.labels.map((_, i) => `hsla(${168 + (i * 14) % 120}, 52%, 42%, 0.82)`);
+  new Chart(el, {
+    type: 'polarArea',
+    data: {
+      labels: rose.labels,
+      datasets: [{
+        label: 'Počet vzoriek',
+        data: rose.counts,
+        backgroundColor: colors
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const spd = rose.speeds[ctx.dataIndex];
+              const pct = rose.total
+                ? Math.round((ctx.raw / rose.total) * 100) : 0;
+              return `${ctx.label}: ${ctx.raw} (${pct} %), ø ${spd} km/h`;
+            }
+          }
+        }
+      },
+      scales: {
+        r: {
+          ticks: { display: false, backdropColor: 'transparent' },
+          grid: { color: chartGridColor() },
+          pointLabels: { color: chartTextColor(), font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+async function loadWindRose() {
+  const meta = $('#windRoseMeta');
+  if (!meta) return;
+  try {
+    const data = await api(`/api/wind-rose?period=${state.windRosePeriod}`);
+    const rose = data.rose;
+    const label = state.windRosePeriod === '30d' ? '30 dní' : '7 dní';
+    meta.textContent = rose.total
+      ? `${label} · ${rose.total} vzoriek so smerom vetra`
+      : `${label} · bez údajov`;
+    drawWindRose(rose);
+  } catch (e) {
+    meta.textContent = e.message;
+  }
+}
+
+$$('#windRoseSeg button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#windRoseSeg button').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.windRosePeriod = btn.dataset.wrose || '7d';
+    loadWindRose();
+  });
+});
 
 function rerenderCharts() {
   if ($('#view-dashboard').classList.contains('active')) loadDashboardChart();
-  if ($('#view-charts').classList.contains('active')) loadCharts();
+  if ($('#view-charts').classList.contains('active')) {
+    loadCharts();
+    loadWindRose();
+  }
 }
+
+async function loadSystemStatus() {
+  const errEl = $('#sysLastError');
+  if (!errEl) return;
+  try {
+    const s = await api('/api/system-status');
+    $('#sysNextSync').textContent = s.next_sync_label || '—';
+    $('#sysLastSample').textContent = fmtTime(s.latest_sample_at) || '—';
+    $('#sysSampleAge').textContent = s.latest_sample_age_label || '—';
+    $('#sysSamplesToday').textContent = s.samples_today != null
+      ? String(s.samples_today) : '—';
+    $('#sysTotalSamples').textContent = s.total_samples != null
+      ? String(s.total_samples) : '—';
+    if (s.last_error) {
+      errEl.textContent = s.last_error;
+      errEl.classList.add('has-error');
+      errEl.classList.remove('is-ok');
+    } else {
+      errEl.textContent = 'Žiadna';
+      errEl.classList.remove('has-error');
+      errEl.classList.add('is-ok');
+    }
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('has-error');
+  }
+}
+
+function initExportDateDefaults() {
+  const toEl = $('#exportTo');
+  const fromEl = $('#exportFrom');
+  if (!toEl || !fromEl || toEl.value) return;
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(from.getDate() - 6);
+  toEl.value = to.toLocaleDateString('en-CA', { timeZone: 'Europe/Bratislava' });
+  fromEl.value = from.toLocaleDateString('en-CA', { timeZone: 'Europe/Bratislava' });
+}
+
+async function downloadExport(format) {
+  const from = $('#exportFrom')?.value;
+  const to = $('#exportTo')?.value;
+  if (!from || !to) {
+    toast('Vyber dátum od a do.', 'error');
+    return;
+  }
+  const fromIso = `${from}T00:00:00`;
+  const toIso = `${to}T23:59:59`;
+  const q = new URLSearchParams({ from: fromIso, to: toIso, format });
+  const res = await fetch(`/api/export?${q}`, { credentials: 'same-origin' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const count = res.headers.get('X-Export-Count');
+  let filename = `meteo-export.${format === 'xlsx' ? 'xlsx' : 'csv'}`;
+  const cd = res.headers.get('Content-Disposition') || '';
+  const m = /filename="([^"]+)"/i.exec(cd);
+  if (m) filename = m[1];
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  const hint = $('#exportHint');
+  if (hint) hint.textContent = count ? `Stiahnuté ${count} riadkov.` : 'Hotovo.';
+}
+
+$('#btnExportCsv')?.addEventListener('click', async () => {
+  try {
+    await downloadExport('csv');
+    toast('CSV stiahnuté');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+});
+
+$('#btnExportXlsx')?.addEventListener('click', async () => {
+  try {
+    await downloadExport('xlsx');
+    toast('Excel stiahnuté');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+});
 
 $$('#periodSeg button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -927,6 +1116,7 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
 });
 
 async function loadSettingsForms() {
+  initExportDateDefaults();
   const s = await api('/api/settings');
   state.settings = s;
   await fillForecastSettingsForm(s.forecast);
