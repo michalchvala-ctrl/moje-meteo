@@ -74,6 +74,15 @@ function getConfig() {
   };
 }
 
+function isForecastSaved(s) {
+  const name = (s.forecast_location_name || '').trim();
+  if (name) return true;
+  const lat = s.forecast_lat != null ? Number(s.forecast_lat) : null;
+  const lon = s.forecast_lon != null ? Number(s.forecast_lon) : null;
+  if (lat == null || lon == null) return false;
+  return Math.abs(lat - DEFAULT_LAT) > 0.02 || Math.abs(lon - DEFAULT_LON) > 0.02;
+}
+
 function clientSettings() {
   const s = getRow();
   const days = Math.max(1, Math.min(7, parseInt(s.forecast_days, 10) || 7));
@@ -85,7 +94,8 @@ function clientSettings() {
     lon,
     name,
     label: name || DEFAULT_NAME,
-    days
+    days,
+    saved: isForecastSaved(s)
   };
 }
 

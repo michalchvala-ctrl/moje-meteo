@@ -218,7 +218,7 @@ $$('#nav .nav-link').forEach(btn => {
 async function loadApp() {
   initTheme();
   state.settings = await api('/api/settings');
-  fillForecastSettingsForm(state.settings?.forecast);
+  await fillForecastSettingsForm(state.settings?.forecast);
   await loadCurrent();
   registerServiceWorker();
   initLiveTimeControls();
@@ -645,15 +645,25 @@ function formatCoord(n) {
   return String(Number(n));
 }
 
-function fillForecastSettingsForm(fc) {
+async function fillForecastSettingsForm(fcIn) {
   const lat = $('#forecastLat');
   const lon = $('#forecastLon');
   const name = $('#forecastName');
   const query = $('#forecastLocationQuery');
   const days = $('#forecastDays');
   const summary = $('#forecastSavedSummary');
+  let fc = fcIn;
   if (!fc) {
-    if (summary) summary.textContent = 'Lokalita nie je uložená.';
+    try {
+      const s = await api('/api/settings');
+      state.settings = s;
+      fc = s.forecast;
+    } catch (_) { /* ignore */ }
+  }
+  if (!fc) {
+    if (summary) {
+      summary.textContent = 'Nastavenia predpovede sa nenačítali zo servera — obnov stránku (Ctrl+F5). Ak problém trvá, na euflix spusti git pull a reštart kontajnera.';
+    }
     return;
   }
   const label = (fc.name || fc.label || '').trim();
@@ -663,9 +673,13 @@ function fillForecastSettingsForm(fc) {
   if (query) query.value = label;
   if (days) days.value = String(fc.days || 7);
   if (summary) {
-    summary.textContent = label
-      ? `Uložené: ${label} · ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`
-      : `Uložené súradnice: ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`;
+    if (fc.saved) {
+      summary.textContent = label
+        ? `Uložené na serveri: ${label} · ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`
+        : `Uložené na serveri: ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`;
+    } else {
+      summary.textContent = 'Lokalita ešte nie je uložená na serveri — skontroluj údaje a klikni „Uložiť lokalitu“.';
+    }
   }
 }
 
@@ -766,7 +780,7 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
         forecast: { lat, lon, name, days }
       }
     });
-    fillForecastSettingsForm(state.settings.forecast);
+    await fillForecastSettingsForm(state.settings.forecast);
     toast('Lokalita predpovede uložená');
     if ($('#view-forecast')?.classList.contains('active')) loadForecast();
   } catch (err) {
@@ -777,7 +791,7 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
 async function loadSettingsForms() {
   const s = await api('/api/settings');
   state.settings = s;
-  fillForecastSettingsForm(s.forecast);
+  await fillForecastSettingsForm(s.forecast);
   const f = $('#settingsEcowitt');
   f.elements.enabled.checked = s.ecowitt.enabled;
   f.elements.mac.value = s.ecowitt.mac || '';
@@ -810,7 +824,7 @@ $('#settingsEcowitt').addEventListener('submit', async (e) => {
   if (fd.get('api_key')) body.ecowitt.api_key = fd.get('api_key');
   try {
     state.settings = await api('/api/settings', { method: 'PUT', body });
-    fillForecastSettingsForm(state.settings?.forecast);
+    await fillForecastSettingsForm(state.settings?.forecast);
     toast('Nastavenia uložené');
   } catch (err) {
     toast(err.message, 'error');
@@ -840,7 +854,7 @@ $('#settingsAlerts').addEventListener('submit', async (e) => {
         }
       }
     });
-    fillForecastSettingsForm(state.settings?.forecast);
+    await fillForecastSettingsForm(state.settings?.forecast);
     toast('Prahy uložené');
   } catch (err) {
     toast(err.message, 'error');
