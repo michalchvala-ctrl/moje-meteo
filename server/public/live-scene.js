@@ -124,11 +124,16 @@ function liveCelestialPos(progress) {
   };
 }
 
-/** Posun tieňa v maske: k=0 nov (stred), k=1 spln (tieň mimo). Dorastá = svetlo vpravo. */
-function moonShadowCenterX(cx, r, illumination, waxing) {
+/** Osvetlený výrez disku — dorastá = pás vpravo, ubúda = pás vľavo (severná pologuľa). */
+function moonClipRect(cx, cy, r, illumination, ageDays) {
   const k = Math.max(0, Math.min(1, illumination));
-  const shift = 2 * r * k;
-  return waxing ? cx - shift : cx + shift;
+  const waxing = ageDays < MOON_SYNODIC / 2;
+  const w = Math.max(0, 2 * r * k);
+  const h = 2 * r;
+  const y = cy - r;
+  if (w <= 0.01) return { x: cx, y, width: 0, height: h };
+  if (waxing) return { x: cx + r - w, y, width: w, height: h };
+  return { x: cx - r, y, width: w, height: h };
 }
 
 function moonPhaseNameFromAge(age) {
@@ -136,9 +141,9 @@ function moonPhaseNameFromAge(age) {
   if (age < s * 0.03) return MOON_NAMES[0];
   if (age < s * 0.22) return MOON_NAMES[1];
   if (age < s * 0.28) return MOON_NAMES[2];
-  if (age < s * 0.47) return MOON_NAMES[3];
+  if (age < s * 0.47) return 'Dorastajúci vypuklý Mesiac';
   if (age < s * 0.53) return MOON_NAMES[4];
-  if (age < s * 0.72) return MOON_NAMES[5];
+  if (age < s * 0.72) return 'Ubúdajúci vypuklý Mesiac';
   if (age < s * 0.78) return MOON_NAMES[6];
   return MOON_NAMES[7];
 }
@@ -401,15 +406,16 @@ async function renderLiveScene(latest) {
   );
 
   const moonSvg = document.getElementById('liveMoon');
-  const moonShadow = document.getElementById('liveMoonShadow');
+  const moonClip = document.getElementById('liveMoonClipRect');
   if (moonSvg && showMoon) {
     moonSvg.style.opacity = String(0.55 + s.moon.illumination * 0.45);
   }
-  if (moonShadow) {
-    const cx = moonShadowCenterX(32, 27, s.moon.illumination, s.moon.waxing);
-    moonShadow.setAttribute('cx', String(cx));
-    moonShadow.setAttribute('cy', '32');
-    moonShadow.setAttribute('r', '27');
+  if (moonClip) {
+    const rect = moonClipRect(32, 32, 27, s.moon.illumination, s.moon.age);
+    moonClip.setAttribute('x', String(rect.x));
+    moonClip.setAttribute('y', String(rect.y));
+    moonClip.setAttribute('width', String(rect.width));
+    moonClip.setAttribute('height', String(rect.height));
   }
 
   const vane = document.getElementById('liveVane');
