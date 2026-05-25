@@ -322,6 +322,20 @@ app.get('/api/samples', requireAuth, (req, res) => {
   res.json(querySamples(req.query.from, req.query.to));
 });
 
+app.get('/api/samples/nearest', requireAuth, (req, res) => {
+  const at = String(req.query.at || '').trim();
+  if (!at) return res.status(400).json({ error: 'Chýba parameter at (ISO čas).' });
+  const row = db.prepare(`
+    SELECT * FROM weather_samples
+    WHERE recorded_at BETWEEN datetime(?, '-45 minutes') AND datetime(?, '+45 minutes')
+    ORDER BY ABS(
+      (strftime('%s', recorded_at) - strftime('%s', ?))
+    ) ASC
+    LIMIT 1
+  `).get(at, at, at);
+  res.json(row || null);
+});
+
 app.get('/api/daily', requireAuth, (req, res) => {
   res.json(queryDaily(req.query.from, req.query.to));
 });

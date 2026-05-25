@@ -640,43 +640,47 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 }
 .live-cloud-layer {
   position: absolute;
-  left: -22%;
+  left: 0;
+  top: var(--layer-top, 10%);
   width: 140px;
   height: 56px;
   animation: liveCloudPass var(--layer-dur, 50s) linear infinite;
   animation-delay: var(--layer-delay, 0s);
-  will-change: left, opacity;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translate3d(-28vw, 0, 0) scale(var(--layer-scale, 1));
+  opacity: var(--layer-op, 0.55);
 }
 .live-cloud-wind[data-reverse="1"] .live-cloud-layer {
   animation-direction: reverse;
 }
 .live-cloud-far {
-  top: 5%;
+  --layer-top: 5%;
   --layer-dur: var(--cloud-dur-c, 72s);
   --layer-scale: 0.68;
+  --layer-op: calc(.22 + var(--clouds, .35) * .4);
   --layer-delay: calc(var(--cloud-dur-c, 72s) * -0.4);
 }
 .live-cloud-mid {
-  top: 14%;
+  --layer-top: 14%;
   --layer-dur: var(--cloud-dur-b, 52s);
   --layer-scale: 0.88;
+  --layer-op: calc(.32 + var(--clouds, .4) * .5);
   --layer-delay: calc(var(--cloud-dur-b, 52s) * -0.55);
 }
 .live-cloud-near {
-  top: 24%;
+  --layer-top: 24%;
   --layer-dur: var(--cloud-dur, 36s);
   --layer-scale: 1.08;
+  --layer-op: calc(.42 + var(--clouds, .45) * .55);
   --layer-delay: calc(var(--cloud-dur, 36s) * -0.15);
 }
 .live-puff-cluster {
   position: relative;
   width: 130px;
   height: 52px;
-  transform: scale(var(--layer-scale, 1));
-  animation: liveCloudBob 9s ease-in-out infinite;
+  transform: translateZ(0);
 }
-.live-cloud-mid .live-puff-cluster { animation-duration: 11s; animation-delay: -3s; }
-.live-cloud-near .live-puff-cluster { animation-duration: 8s; animation-delay: -1s; }
 .live-puff {
   position: absolute;
   border-radius: 50%;
@@ -689,15 +693,16 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 }
 
 @keyframes liveCloudPass {
-  0% { left: -24%; opacity: 0; }
-  8% { opacity: calc(.35 + var(--clouds, .4) * .55); }
-  92% { opacity: calc(.3 + var(--clouds, .4) * .5); }
-  100% { left: 108%; opacity: 0; }
-}
-
-@keyframes liveCloudBob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  0% {
+    transform: translate3d(-30vw, 0, 0) scale(var(--layer-scale, 1));
+    opacity: 0;
+  }
+  4% { opacity: var(--layer-op, 0.55); }
+  96% { opacity: var(--layer-op, 0.55); }
+  100% {
+    transform: translate3d(115vw, 0, 0) scale(var(--layer-scale, 1));
+    opacity: 0;
+  }
 }
 
 .live-celestial-layer {
@@ -800,7 +805,10 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   fill: #64748b;
   font-family: system-ui, sans-serif;
 }
-.live-vane-hand { transition: transform .65s ease; transform-origin: 0 0; }
+.live-vane-hand {
+  transform-origin: 0 0;
+  transform-box: fill-box;
+}
 .live-wind-hand {
   stroke: #dc2626;
   stroke-width: 2.2;

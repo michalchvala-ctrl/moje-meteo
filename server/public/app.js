@@ -211,7 +211,7 @@ $$('#nav .nav-link').forEach(btn => {
     if (view === 'alerts') loadAlertsList();
     if (view === 'settings') loadSettingsForms();
     if (view === 'dashboard') loadCurrent();
-    if (view === 'live') renderLiveScene(state.current?.latest);
+    if (view === 'live') await renderLiveScene(state.current?.latest);
   });
 });
 
@@ -287,7 +287,7 @@ function renderCurrent() {
   }
 
   if ($('#view-live')?.classList.contains('active')) {
-    renderLiveScene(latest);
+    await renderLiveScene(latest);
   }
 }
 

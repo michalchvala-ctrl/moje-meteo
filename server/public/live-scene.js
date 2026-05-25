@@ -36,6 +36,13 @@ function toDatetimeLocalValue(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** ISO čas v Europe/Bratislava pre API (zhoda so recorded_at v DB). */
+function toSceneApiTime(d = new Date()) {
+  const p = liveLocalParts(d);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}:00`;
+}
+
 function parseDatetimeLocalValue(value) {
   if (!value) return null;
   const d = new Date(value);
@@ -221,11 +228,40 @@ function ensureLiveParticles(container, count, cls) {
   container.appendChild(frag);
 }
 
+let liveSceneWxNote = '';
+
+async function resolveLiveWeather(latest) {
+  if (!isLiveSceneCustomTime() || !latest) {
+    liveSceneWxNote = '';
+    return latest;
+  }
+  const at = getLiveSceneTime();
+  try {
+    const near = await api(`/api/samples/nearest?at=${encodeURIComponent(toSceneApiTime(at))}`);
+    if (!near) {
+      liveSceneWxNote = 'pre tento čas nie sú vzorky — vietor z posledného syncu';
+      return latest;
+    }
+    const when = near.recorded_at
+      ? new Date(near.recorded_at).toLocaleString('sk-SK', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+        timeZone: LIVE_TZ
+      })
+      : '';
+    liveSceneWxNote = when ? `merania z ${when}` : 'merania z histórie';
+    return { ...latest, ...near };
+  } catch {
+    liveSceneWxNote = '';
+    return latest;
+  }
+}
+
 function updateLiveTimeHint() {
   const hint = document.getElementById('liveTimeHint');
   if (!hint) return;
   if (isLiveSceneCustomTime()) {
-    hint.textContent = `Náhľad scény: ${formatLiveSceneWhen(getLiveSceneTime())} · merania sú aktuálne`;
+    const extra = liveSceneWxNote ? ` · ${liveSceneWxNote}` : '';
+    hint.textContent = `Náhľad scény: ${formatLiveSceneWhen(getLiveSceneTime())}${extra}`;
   } else {
     hint.textContent = 'Scéna sleduje reálny čas. Počasie z posledného syncu.';
   }
@@ -243,24 +279,22 @@ function initLiveTimeControls() {
     input.disabled = !check.checked;
   };
 
-  const applyFromInput = () => {
+  const applyFromInput = async () => {
     const d = parseDatetimeLocalValue(input.value);
     if (!d) return;
     setLiveSceneTime(d);
     check.checked = true;
-    renderLiveScene(window.__liveLatest);
-    updateLiveTimeHint();
+    await renderLiveScene(window.__liveLatest);
   };
 
-  check.addEventListener('change', () => {
+  check.addEventListener('change', async () => {
     syncFields();
     if (check.checked) {
-      applyFromInput();
+      await applyFromInput();
     } else {
       clearLiveSceneTime();
       input.value = toDatetimeLocalValue(new Date());
-      renderLiveScene(window.__liveLatest);
-      updateLiveTimeHint();
+      await renderLiveScene(window.__liveLatest);
     }
   });
 
@@ -268,26 +302,26 @@ function initLiveTimeControls() {
     if (check.checked) applyFromInput();
   });
 
-  document.getElementById('liveTimeApply')?.addEventListener('click', applyFromInput);
+  document.getElementById('liveTimeApply')?.addEventListener('click', () => applyFromInput());
 
-  document.getElementById('liveTimeNow')?.addEventListener('click', () => {
+  document.getElementById('liveTimeNow')?.addEventListener('click', async () => {
     clearLiveSceneTime();
     check.checked = false;
     syncFields();
     input.value = toDatetimeLocalValue(new Date());
-    renderLiveScene(window.__liveLatest);
-    updateLiveTimeHint();
+    await renderLiveScene(window.__liveLatest);
   });
 
   updateLiveTimeHint();
 }
 
-function renderLiveScene(latest) {
+async function renderLiveScene(latest) {
   window.__liveLatest = latest;
   const root = document.getElementById('liveScene');
   if (!root) return;
 
-  const s = buildLiveSceneState(latest);
+  const wx = await resolveLiveWeather(latest);
+  const s = buildLiveSceneState(wx);
   root.dataset.season = s.season;
   root.dataset.phase = s.dayPhase;
   root.dataset.frozen = s.frozen ? '1' : '0';
@@ -357,8 +391,15 @@ function renderLiveScene(latest) {
 
   const vane = document.getElementById('liveVane');
   if (vane) {
-    const deg = s.windFrom ?? 0;
+    const deg = s.windFrom != null ? s.windFrom : 0;
+    const prev = parseFloat(vane.dataset.deg || '');
+    if (s.windFrom != null && prev !== deg) {
+      vane.style.transition = 'transform .8s ease';
+    } else {
+      vane.style.transition = 'none';
+    }
     vane.setAttribute('transform', `rotate(${deg})`);
+    vane.dataset.deg = String(deg);
     const clock = vane.closest('.live-wind-clock');
     if (clock) {
       const lbl = s.windFrom != null
