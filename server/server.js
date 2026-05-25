@@ -298,7 +298,12 @@ app.get('/api/current', requireAuth, (req, res) => {
 });
 
 app.get('/api/system-status', requireAuth, (req, res) => {
-  res.json(meteoUtils.getSystemStatus(ecowitt));
+  try {
+    res.json(meteoUtils.getSystemStatus(ecowitt));
+  } catch (e) {
+    console.error('[system-status]', e);
+    res.status(500).json({ error: e.message || 'Stav systému sa nepodarilo načítať.' });
+  }
 });
 
 app.get('/api/wind-rose', requireAuth, (req, res) => {

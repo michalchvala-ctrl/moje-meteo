@@ -795,8 +795,11 @@ async function loadSystemStatus() {
       errEl.classList.add('is-ok');
     }
   } catch (e) {
-    errEl.textContent = e.message;
+    ['#sysNextSync', '#sysLastSample', '#sysSampleAge', '#sysSamplesToday', '#sysTotalSamples']
+      .forEach((id) => { const el = $(id); if (el) el.textContent = '—'; });
+    errEl.textContent = `Chyba načítania (${e.message}) — nie chyba Ecowitt API`;
     errEl.classList.add('has-error');
+    errEl.classList.remove('is-ok');
   }
 }
 

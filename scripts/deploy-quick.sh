@@ -8,6 +8,7 @@ echo "Verzia v repozitári: $(cat VERSION 2>/dev/null || echo '?')"
 
 podman cp server/forecast.js moje-meteo:/app/forecast.js
 podman cp server/chart-period.js moje-meteo:/app/chart-period.js
+podman cp server/schedule-sync.js moje-meteo:/app/schedule-sync.js
 podman cp server/server.js moje-meteo:/app/server.js
 podman cp server/ecowitt.js moje-meteo:/app/ecowitt.js
 podman cp server/meteo-utils.js moje-meteo:/app/meteo-utils.js

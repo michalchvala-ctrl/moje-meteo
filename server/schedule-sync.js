@@ -106,6 +106,7 @@ module.exports = {
   clampIntervalMin,
   nextAlignedDate,
   msUntilNextAligned,
+  formatAlignedTime,
   alignedSampleTimestamp,
   parseDbTimestamp,
   nowIso,
