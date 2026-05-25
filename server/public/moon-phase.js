@@ -1,6 +1,7 @@
 /**
  * Fázy Mesiaca — čistý JS (synodický mesiac 29,53 dňa) + inline SVG.
  * Severná pologuľa (SK): dorastá = svetlo vpravo, ubúda = vľavo.
+ * Vizuál: maska + posunutý kruh tieňa (prirodzený zakrivený terminator).
  */
 (function (global) {
   const SYNODIC_DAYS = 29.53;
@@ -10,9 +11,9 @@
     'Nov',
     'Dorastajúci srpek',
     'Prvá štvrť',
-    'Dorastajúci štvrtinový Mesiac',
+    'Dorastajúci vypuklý Mesiac',
     'Spln',
-    'Ubúdajúci štvrtinový Mesiac',
+    'Ubúdajúci vypuklý Mesiac',
     'Posledná štvrť',
     'Ubúdajúci srpek'
   ];
@@ -30,7 +31,7 @@
       illumination,
       waxing,
       name: phaseNameFromAge(age),
-      label: phaseLabel(age, illumination, waxing),
+      label: phaseLabel(age, illumination),
       illuminationPct: Math.round(illumination * 1000) / 10
     };
   }
@@ -47,76 +48,16 @@
     return PHASE_NAMES[7];
   }
 
-  function phaseLabel(age, illumination, waxing) {
-    const name = phaseNameFromAge(age);
+  function phaseLabel(age, illumination) {
     const pct = Math.round(illumination * 100);
-    return `${name} (${pct} %)`;
+    return `${phaseNameFromAge(age)} (${pct} %)`;
   }
 
-  function fullDiskPath(cx, cy, r) {
-    return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
-  }
-
-  /**
-   * Osvetlená časť disku — dva prekrývajúce sa kruhy (zakrivený terminator).
-   * @param {number} phase 0..1 (0 nov, 0.5 spln, 1 nov)
-   */
-  function litDiskPath(cx, cy, r, phase) {
-    const p = ((phase % 1) + 1) % 1;
-    const waxing = p <= 0.5;
-    const t = waxing ? p * 2 : (1 - p) * 2;
-
-    if (t <= 0.001) return '';
-    if (t >= 0.999) return fullDiskPath(cx, cy, r);
-
-    const sign = waxing ? 1 : -1;
-
-    if (t <= 0.5) {
-      const offset = r * Math.cos(t * Math.PI);
-      const termR = r * Math.sin(t * Math.PI);
-      const sweepOut = sign > 0 ? 1 : 0;
-      const sweepIn = sign > 0 ? 0 : 1;
-      return [
-        `M ${cx} ${cy - r}`,
-        `A ${r} ${r} 0 0 ${sweepOut} ${cx} ${cy + r}`,
-        `A ${termR} ${termR} 0 0 ${sweepIn} ${cx} ${cy - r}`,
-        'Z'
-      ].join(' ');
-    }
-
-    const offset = r * Math.cos((1 - t) * Math.PI);
-    const termR = r * Math.sin((1 - t) * Math.PI);
-    const sweepOut = sign > 0 ? 0 : 1;
-    const sweepIn = sign > 0 ? 1 : 0;
-    return [
-      `M ${cx + sign * r} ${cy}`,
-      `A ${r} ${r} 0 0 ${sweepOut} ${cx} ${cy - r}`,
-      `A ${r} ${r} 0 0 ${sweepOut} ${cx} ${cy + r}`,
-      `A ${termR} ${termR} 0 0 ${sweepIn} ${cx + sign * r} ${cy}`,
-      'Z'
-    ].join(' ');
-  }
-
-  /** SVG pre widget (viewBox 0 0 100 100). */
-  function moonSvgMarkup(phaseInfo, size) {
-    const cx = 50;
-    const cy = 50;
-    const r = 42;
-    const phase = phaseInfo.phase;
-    const lit = litDiskPath(cx, cy, r, phase);
-    const uid = `mg${Math.random().toString(36).slice(2, 9)}`;
-    return `
-<svg class="moon-phase-svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${phaseInfo.name}">
-  <defs>
-    <radialGradient id="${uid}" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#f8fafc"/>
-      <stop offset="100%" stop-color="#94a3b8"/>
-    </radialGradient>
-  </defs>
-  <circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(15,23,42,.65)"/>
-  <path fill="url(#${uid})" d="${lit || `M ${cx} ${cy} m 0 0`}"/>
-  <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(148,163,184,.4)" stroke-width="1.2"/>
-</svg>`.trim();
+  /** Stred kruhu tieňa v maske (čierna = skryté). k=0 nov, k=1 spln. */
+  function shadowCircleX(cx, r, illumination, waxing) {
+    const k = Math.max(0, Math.min(1, illumination));
+    const shift = 2 * r * k;
+    return waxing ? cx - shift : cx + shift;
   }
 
   function applyMoonToElement(svgRoot, phaseInfo) {
@@ -124,10 +65,19 @@
     const cx = 50;
     const cy = 50;
     const r = 42;
-    const lit = document.getElementById('liveMoonLit');
+    const k = phaseInfo.illumination;
+    const shadow = document.getElementById('liveMoonShadow');
     const label = document.getElementById('liveMoonLabel');
-    if (lit) {
-      lit.setAttribute('d', litDiskPath(cx, cy, r, phaseInfo.phase) || `M ${cx} ${cy} m 0 0`);
+    const disk = document.getElementById('liveMoonDisk');
+
+    if (shadow) {
+      const sx = shadowCircleX(cx, r, k, phaseInfo.waxing);
+      shadow.setAttribute('cx', String(sx));
+      shadow.setAttribute('cy', String(cy));
+      shadow.setAttribute('r', String(r));
+    }
+    if (disk) {
+      disk.setAttribute('opacity', k < 0.02 ? '0.12' : '1');
     }
     if (label) {
       label.textContent = phaseInfo.label;
@@ -137,9 +87,9 @@
 
   global.MoonPhase = {
     SYNODIC_DAYS,
+    EPOCH_UTC,
     computeMoonPhase,
-    litDiskPath,
-    moonSvgMarkup,
+    shadowCircleX,
     applyMoonToElement,
     PHASE_NAMES
   };
