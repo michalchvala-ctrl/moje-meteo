@@ -202,7 +202,7 @@ $('#logoutBtn').addEventListener('click', async () => {
 });
 
 $$('#nav .nav-link').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const view = btn.dataset.view;
     $$('#nav .nav-link').forEach(b => b.classList.toggle('active', b === btn));
     $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
