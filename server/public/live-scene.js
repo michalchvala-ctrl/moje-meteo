@@ -124,17 +124,11 @@ function liveCelestialPos(progress) {
   };
 }
 
-/** Osvetlený výsek disku (even-odd) — severná pologuľa, dorastá = svetlo vpravo. */
-function moonLitPath(cx, cy, r, illumination, waxing) {
+/** Posun tieňa v maske: k=0 nov (stred), k=1 spln (tieň mimo). Dorastá = svetlo vpravo. */
+function moonShadowCenterX(cx, r, illumination, waxing) {
   const k = Math.max(0, Math.min(1, illumination));
-  const outer = `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r}`;
-  if (k <= 0.002) return '';
-  if (k >= 0.998) return outer;
-  const d = 2 * r * (1 - k);
-  const hx = waxing ? cx - d : cx + d;
-  const sweep = waxing ? 0 : 1;
-  const inner = `M ${hx} ${cy - r} A ${r} ${r} 0 1 ${sweep} ${hx} ${cy + r} A ${r} ${r} 0 1 ${sweep} ${hx} ${cy - r}`;
-  return `${outer} ${inner}`;
+  const shift = 2 * r * k;
+  return waxing ? cx - shift : cx + shift;
 }
 
 function moonPhaseNameFromAge(age) {
@@ -407,14 +401,15 @@ async function renderLiveScene(latest) {
   );
 
   const moonSvg = document.getElementById('liveMoon');
-  const moonLit = document.getElementById('liveMoonLit');
+  const moonShadow = document.getElementById('liveMoonShadow');
   if (moonSvg && showMoon) {
     moonSvg.style.opacity = String(0.55 + s.moon.illumination * 0.45);
   }
-  if (moonLit) {
-    const d = moonLitPath(32, 32, 27, s.moon.illumination, s.moon.waxing);
-    moonLit.setAttribute('d', d || 'M 32 32 m 0 0');
-    moonLit.style.opacity = d ? '1' : '0.15';
+  if (moonShadow) {
+    const cx = moonShadowCenterX(32, 27, s.moon.illumination, s.moon.waxing);
+    moonShadow.setAttribute('cx', String(cx));
+    moonShadow.setAttribute('cy', '32');
+    moonShadow.setAttribute('r', '27');
   }
 
   const vane = document.getElementById('liveVane');
