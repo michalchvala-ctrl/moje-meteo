@@ -643,15 +643,21 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   fill: rgba(255, 255, 255, calc(.9 * var(--clouds, .5) + .25));
 }
 .live-cloud-drift {
-  animation: liveCloudDrift 52s linear infinite;
+  animation: liveCloudDrift var(--cloud-dur, 52s) linear infinite;
 }
-.live-cloud-a { animation-duration: 54s; }
-.live-cloud-b { animation-duration: 68s; animation-delay: -18s; }
-.live-cloud-c { animation-duration: 46s; animation-delay: -8s; }
+.live-cloud-a { animation-duration: var(--cloud-dur, 52s); }
+.live-cloud-b {
+  animation-duration: var(--cloud-dur-b, 64s);
+  animation-delay: -18s;
+}
+.live-cloud-c {
+  animation-duration: var(--cloud-dur-c, 44s);
+  animation-delay: -8s;
+}
 
 @keyframes liveCloudDrift {
-  from { transform: translateX(-95px); }
-  to { transform: translateX(420px); }
+  from { transform: translate(var(--cloud-from-x, -95px), var(--cloud-from-y, 0)); }
+  to { transform: translate(var(--cloud-to-x, 420px), var(--cloud-to-y, 0)); }
 }
 
 .live-celestial-layer {
