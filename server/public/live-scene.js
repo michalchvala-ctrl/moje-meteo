@@ -173,13 +173,15 @@ function buildLiveSceneState(latest, at = getLiveSceneTime()) {
   const dayPhase = liveDayPhase(hour, minute);
   const isNight = dayPhase === 'night' || dayPhase === 'dusk';
   const temp = latest?.outdoor_temp_c;
-  const windFrom = latest?.wind_direction;
+  const windFrom = typeof parseWindDirectionDeg === 'function'
+    ? parseWindDirectionDeg(latest?.wind_direction)
+    : latest?.wind_direction;
   const windSpeed = latest?.wind_speed_kmh ?? 0;
   const windGust = latest?.wind_gust_kmh ?? 0;
   const rainRate = latest?.rain_rate_mm ?? 0;
   const snow = temp != null && temp < 1 && rainRate > 0;
   const windStr = liveWindStrength(windSpeed, windGust);
-  const blowTo = windFrom != null ? normDegLive(windFrom + 180) : 180;
+  const blowTo = windFrom != null ? ((windFrom + 180) % 360 + 360) % 360 : 180;
   const moon = getMoonPhase(at);
   const sunPos = liveCelestialPos(liveSunProgress(hour, minute));
   const moonPos = liveCelestialPos(liveMoonProgress(hour, minute));
@@ -193,7 +195,7 @@ function buildLiveSceneState(latest, at = getLiveSceneTime()) {
     dayPhase,
     isNight,
     temp,
-    windFrom: windFrom != null ? normDegLive(windFrom) : null,
+    windFrom,
     blowTo,
     windSpeed,
     windStr,
@@ -237,7 +239,7 @@ async function resolveLiveWeather(latest) {
   }
   const at = getLiveSceneTime();
   try {
-    const near = await api(`/api/samples/nearest?at=${encodeURIComponent(toSceneApiTime(at))}`);
+    const near = await api(`/api/samples/nearest?at=${encodeURIComponent(at.toISOString())}`);
     if (!near) {
       liveSceneWxNote = 'pre tento čas nie sú vzorky — vietor z posledného syncu';
       return latest;
@@ -391,20 +393,19 @@ async function renderLiveScene(latest) {
 
   const vane = document.getElementById('liveVane');
   if (vane) {
-    const deg = s.windFrom != null ? s.windFrom : 0;
-    const prev = parseFloat(vane.dataset.deg || '');
-    if (s.windFrom != null && prev !== deg) {
-      vane.style.transition = 'transform .8s ease';
+    const deg = s.windFrom != null ? s.windFrom : null;
+    if (deg != null) {
+      vane.setAttribute('transform', `rotate(${deg})`);
+      vane.dataset.deg = String(deg);
     } else {
-      vane.style.transition = 'none';
+      vane.setAttribute('transform', 'rotate(0)');
+      vane.dataset.deg = '';
     }
-    vane.setAttribute('transform', `rotate(${deg})`);
-    vane.dataset.deg = String(deg);
     const clock = vane.closest('.live-wind-clock');
     if (clock) {
-      const lbl = s.windFrom != null
-        ? `Smer vetra: fúka zo ${Math.round(deg)}°`
-        : 'Smer vetra: —';
+      const lbl = deg != null
+        ? `Smer vetra: fúka zo ${Math.round(deg)}° (${typeof degToCompassShort === 'function' ? degToCompassShort(deg) : ''})`
+        : 'Smer vetra: bez údajov';
       clock.setAttribute('aria-label', lbl);
     }
   }
@@ -457,6 +458,7 @@ async function renderLiveScene(latest) {
     stats.innerHTML = [
       s.temp != null ? `<span>${Number(s.temp).toFixed(1)} °C</span>` : '',
       s.windSpeed != null ? `<span>💨 ${Number(s.windSpeed).toFixed(1)} km/h</span>` : '',
+      s.windFrom != null ? `<span>🧭 ${Math.round(s.windFrom)}° ${typeof degToCompassShort === 'function' ? degToCompassShort(s.windFrom) : ''}</span>` : '',
       s.rainRate > 0 ? `<span>🌧 ${Number(s.rainRate).toFixed(1)} mm/h</span>` : ''
     ].filter(Boolean).join('');
   }

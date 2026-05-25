@@ -325,15 +325,26 @@ app.get('/api/samples', requireAuth, (req, res) => {
 app.get('/api/samples/nearest', requireAuth, (req, res) => {
   const at = String(req.query.at || '').trim();
   if (!at) return res.status(400).json({ error: 'Chýba parameter at (ISO čas).' });
-  const row = db.prepare(`
+  const targetMs = new Date(at).getTime();
+  if (Number.isNaN(targetMs)) {
+    return res.status(400).json({ error: 'Neplatný čas at.' });
+  }
+  const rows = db.prepare(`
     SELECT * FROM weather_samples
-    WHERE recorded_at BETWEEN datetime(?, '-45 minutes') AND datetime(?, '+45 minutes')
-    ORDER BY ABS(
-      (strftime('%s', recorded_at) - strftime('%s', ?))
-    ) ASC
-    LIMIT 1
-  `).get(at, at, at);
-  res.json(row || null);
+    WHERE recorded_at >= datetime(?, '-6 hours')
+      AND recorded_at <= datetime(?, '+6 hours')
+  `).all(at, at);
+  if (!rows.length) return res.json(null);
+  let best = rows[0];
+  let bestDiff = Math.abs(new Date(best.recorded_at).getTime() - targetMs);
+  for (let i = 1; i < rows.length; i++) {
+    const diff = Math.abs(new Date(rows[i].recorded_at).getTime() - targetMs);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = rows[i];
+    }
+  }
+  res.json(best);
 });
 
 app.get('/api/daily', requireAuth, (req, res) => {

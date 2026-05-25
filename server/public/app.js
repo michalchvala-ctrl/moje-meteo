@@ -99,7 +99,17 @@ function renderWindWidget(latest) {
     return;
   }
 
-  const deg = normDeg(from);
+  const deg = typeof parseWindDirectionDeg === 'function'
+    ? parseWindDirectionDeg(from)
+    : normDeg(from);
+  if (deg == null) {
+    compass?.classList.add('no-data');
+    if (arrowWrap) arrowWrap.style.transform = 'rotate(0deg)';
+    $('#windDegNum').textContent = '—';
+    $('#windDirLabel').textContent = '—';
+    $('#windDirLong').textContent = 'Smer —';
+    return;
+  }
   compass?.classList.remove('no-data');
   if (arrowWrap) arrowWrap.style.transform = `rotate(${deg}deg)`;
   $('#windDegNum').textContent = `${Math.round(deg)}°`;

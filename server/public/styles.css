@@ -809,13 +809,13 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   transform-origin: 0 0;
   transform-box: fill-box;
 }
-.live-wind-hand {
-  stroke: #dc2626;
-  stroke-width: 2.2;
-  stroke-linecap: round;
+.live-wind-hand-shape { fill: #dc2626; }
+.live-wind-hub { fill: #44403c; stroke: #292524; stroke-width: 0.6; }
+.live-vane-hand {
+  transform-origin: 0 0;
+  transform-box: fill-box;
+  transition: transform 0.75s ease;
 }
-.live-wind-hand-tip { fill: #dc2626; }
-.live-wind-hub { fill: #57534e; stroke: #44403c; stroke-width: 0.5; }
 [data-theme="dark"] .live-roof-window-frame { fill: #7c4a2a; stroke: #5c3d2e; }
 [data-theme="dark"] .live-wind-dial-face { fill: rgba(30, 58, 90, .85); stroke: #38bdf8; }
 [data-theme="dark"] .live-wind-label { fill: #475569; }
