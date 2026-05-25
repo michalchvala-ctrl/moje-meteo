@@ -11,7 +11,7 @@ const ecowitt = require('./ecowitt');
 const forecast = require('./forecast');
 const weatherImport = require('./weather-import');
 const alerts = require('./alerts');
-const { chartPeriodRangeIso } = require('./chart-period');
+const { chartResolveRange, chartPeriodRangeIso } = require('./chart-period');
 const meteoUtils = require('./meteo-utils');
 const exportData = require('./export-data');
 
@@ -394,17 +394,27 @@ app.get('/api/daily', requireAuth, (req, res) => {
 app.get('/api/chart-data', requireAuth, (req, res) => {
   const period = req.query.period || '24h';
   const resolution = req.query.resolution || 'auto';
+  const date = String(req.query.date || '').trim() || null;
 
-  const { from: fromIso, to: toIso, period: rangePeriod } = chartPeriodRangeIso(period);
-
-  let useDaily = period === 'year' || resolution === 'day';
-  if (resolution === 'hour' && period !== 'year') useDaily = false;
-  if (resolution === 'raw') useDaily = false;
-  if (resolution === 'auto') {
-    useDaily = period === '30d' || period === 'year';
+  let range;
+  try {
+    range = chartResolveRange({ period, date });
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
   }
 
-  const range = { from: fromIso, to: toIso, period: rangePeriod };
+  const rangePeriod = range.period;
+  const isSingleDay = !!date || rangePeriod === 'day';
+
+  let useDaily = !isSingleDay && (rangePeriod === 'year' || resolution === 'day');
+  if (resolution === 'hour' && rangePeriod !== 'year') useDaily = false;
+  if (resolution === 'raw') useDaily = false;
+  if (resolution === 'auto') {
+    if (isSingleDay) useDaily = false;
+    else useDaily = rangePeriod === '30d' || rangePeriod === 'year';
+  }
+
+  const { from: fromIso, to: toIso } = range;
 
   if (useDaily) {
     const rows = queryDaily(fromIso, toIso);
@@ -412,7 +422,8 @@ app.get('/api/chart-data', requireAuth, (req, res) => {
   }
 
   let rows = querySamples(fromIso, toIso);
-  if (resolution === 'hour' || (resolution === 'auto' && (period === '7d' || period === '30d'))) {
+  if (resolution === 'hour' || (resolution === 'auto' && !isSingleDay
+    && (rangePeriod === '7d' || rangePeriod === '30d'))) {
     rows = aggregateSamplesByHour(rows);
   }
   res.json({ source: 'samples', rows, range });

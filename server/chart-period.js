@@ -38,4 +38,30 @@ function chartPeriodRangeIso(period) {
   };
 }
 
-module.exports = { chartPeriodBounds, chartPeriodRangeIso };
+/** Jeden kalendárny deň (lokálny čas servera / TZ kontajnera). date = YYYY-MM-DD */
+function chartDayRangeIso(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || '').trim());
+  if (!m) throw new Error('Neplatný dátum (očakávané YYYY-MM-DD).');
+  const from = new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0, 0);
+  const end = new Date(+m[1], +m[2] - 1, +m[3], 23, 59, 59, 999);
+  const now = new Date();
+  const to = end > now ? now : end;
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    period: 'day',
+    date: `${m[1]}-${m[2]}-${m[3]}`
+  };
+}
+
+function chartResolveRange({ period, date } = {}) {
+  if (date) return chartDayRangeIso(date);
+  return chartPeriodRangeIso(period || '24h');
+}
+
+module.exports = {
+  chartPeriodBounds,
+  chartPeriodRangeIso,
+  chartDayRangeIso,
+  chartResolveRange
+};

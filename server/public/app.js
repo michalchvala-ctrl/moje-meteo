@@ -7,6 +7,8 @@ const state = {
   current: null,
   chartPeriod: '24h',
   chartResolution: 'auto',
+  chartMode: 'day',
+  chartDay: null,
   windRosePeriod: '7d'
 };
 
@@ -217,7 +219,11 @@ $$('#nav .nav-link').forEach(btn => {
     const view = btn.dataset.view;
     $$('#nav .nav-link').forEach(b => b.classList.toggle('active', b === btn));
     $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
-    if (view === 'charts') loadCharts();
+    if (view === 'charts') {
+      initChartDayState();
+      syncChartDayUi();
+      loadCharts();
+    }
     if (view === 'forecast') loadForecast();
     if (view === 'radar' && typeof initRadarView === 'function') await initRadarView();
     if (view === 'alerts') loadAlertsList();
@@ -414,6 +420,72 @@ function chartDensityOptions(pointCount) {
   };
 }
 
+function chartTodayKey() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Bratislava' });
+}
+
+function shiftDateKey(dateKey, deltaDays) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const t = new Date(y, m - 1, d + deltaDays);
+  const mm = String(t.getMonth() + 1).padStart(2, '0');
+  const dd = String(t.getDate()).padStart(2, '0');
+  return `${t.getFullYear()}-${mm}-${dd}`;
+}
+
+function chartDayLabel(dateKey) {
+  const today = chartTodayKey();
+  if (dateKey === today) return 'Dnes';
+  if (dateKey === shiftDateKey(today, -1)) return 'Včera';
+  if (dateKey === shiftDateKey(today, -2)) return 'Predvčera';
+  const [y, m, d] = dateKey.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function initChartDayState() {
+  if (!state.chartDay) state.chartDay = chartTodayKey();
+}
+
+function syncChartDayUi() {
+  initChartDayState();
+  const dateEl = $('#chartDayDate');
+  const labelEl = $('#chartDayLabel');
+  const nav = $('#chartDayNav');
+  if (!dateEl) return;
+  dateEl.value = state.chartDay;
+  if (labelEl) labelEl.textContent = chartDayLabel(state.chartDay);
+  const today = chartTodayKey();
+  const nextBtn = $('#chartDayNext');
+  if (nextBtn) nextBtn.disabled = state.chartDay >= today;
+  if (nav) nav.classList.toggle('is-range-mode', state.chartMode === 'range');
+  $$('#periodSeg button').forEach((b) => {
+    const active = state.chartMode === 'range'
+      ? b.dataset.period === state.chartPeriod
+      : b.dataset.period === '24h' && state.chartDay === today;
+    b.classList.toggle('active', active);
+  });
+}
+
+function setChartDay(dateKey) {
+  state.chartMode = 'day';
+  state.chartDay = dateKey;
+  syncChartDayUi();
+  loadCharts();
+}
+
+function setChartRange(period) {
+  state.chartMode = 'range';
+  state.chartPeriod = period;
+  syncChartDayUi();
+  loadCharts();
+}
+
+function chartDataQuery() {
+  if (state.chartMode === 'day' && state.chartDay) {
+    return `date=${encodeURIComponent(state.chartDay)}&resolution=${state.chartResolution}`;
+  }
+  return `period=${state.chartPeriod}&resolution=${state.chartResolution}`;
+}
+
 function periodRange(period) {
   const to = new Date();
   const from = new Date(to);
@@ -436,7 +508,7 @@ function periodRange(period) {
 }
 
 function xTimeUnit(period) {
-  if (period === '24h') return 'hour';
+  if (period === '24h' || period === 'day') return 'hour';
   if (period === '7d') return 'day';
   if (period === '30d') return 'day';
   if (period === 'year') return 'month';
@@ -444,7 +516,7 @@ function xTimeUnit(period) {
 }
 
 function xTickLimit(period) {
-  if (period === '24h') return 9;
+  if (period === '24h' || period === 'day') return 9;
   if (period === '7d') return 8;
   if (period === '30d') return 10;
   if (period === 'year') return 12;
@@ -464,7 +536,8 @@ function xScaleForRange(range, pointCount) {
     grid: { color: chartGridColor() },
     time: {
       unit: xTimeUnit(period),
-      tooltipFormat: period === '24h' ? 'dd.MM.yyyy HH:mm' : 'dd.MM.yyyy',
+      tooltipFormat: (period === '24h' || period === 'day')
+        ? 'dd.MM.yyyy HH:mm' : 'dd.MM.yyyy',
       displayFormats: {
         hour: 'HH:mm',
         day: 'dd.MM.',
@@ -569,10 +642,13 @@ async function loadDashboardChart() {
 }
 
 async function loadCharts() {
-  const q = `period=${state.chartPeriod}&resolution=${state.chartResolution}`;
-  const data = await api(`/api/chart-data?${q}`);
+  initChartDayState();
+  syncChartDayUi();
+  const data = await api(`/api/chart-data?${chartDataQuery()}`);
   const rows = data.rows || [];
-  const range = data.range || periodRange(state.chartPeriod);
+  const range = data.range || (state.chartMode === 'day'
+    ? { period: 'day', from: `${state.chartDay}T00:00:00`, to: `${state.chartDay}T23:59:59` }
+    : periodRange(state.chartPeriod));
   const src = data.source;
   const isDaily = src === 'daily';
   const xScale = xScaleForRange(range, rows.length);
@@ -784,10 +860,41 @@ $('#btnExportXlsx')?.addEventListener('click', async () => {
 
 $$('#periodSeg button').forEach(btn => {
   btn.addEventListener('click', () => {
-    $$('#periodSeg button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.chartPeriod = btn.dataset.period;
-    loadCharts();
+    const p = btn.dataset.period;
+    if (p === '24h') {
+      setChartDay(chartTodayKey());
+    } else {
+      setChartRange(p);
+    }
+  });
+});
+
+$('#chartDayPrev')?.addEventListener('click', () => {
+  initChartDayState();
+  setChartDay(shiftDateKey(state.chartDay, -1));
+});
+
+$('#chartDayNext')?.addEventListener('click', () => {
+  initChartDayState();
+  const next = shiftDateKey(state.chartDay, 1);
+  if (next <= chartTodayKey()) setChartDay(next);
+});
+
+$('#chartDayDate')?.addEventListener('change', (e) => {
+  const v = e.target.value;
+  if (!v) return;
+  if (v > chartTodayKey()) {
+    e.target.value = chartTodayKey();
+    setChartDay(chartTodayKey());
+    return;
+  }
+  setChartDay(v);
+});
+
+$$('[data-day-offset]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const off = parseInt(btn.dataset.dayOffset, 10) || 0;
+    setChartDay(shiftDateKey(chartTodayKey(), -off));
   });
 });
 

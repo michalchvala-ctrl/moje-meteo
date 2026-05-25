@@ -1180,6 +1180,51 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   min-height: 280px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.chart-day-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.chart-day-picker input[type="date"] {
+  font: inherit;
+  padding: .35rem .5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  color: var(--text);
+}
+.chart-day-label {
+  font-size: .95rem;
+  min-width: 5rem;
+}
+.chart-day-shortcuts {
+  margin-left: auto;
+}
+.chart-day-nav.is-range-mode .chart-day-shortcuts {
+  margin-left: 0;
+}
+@media (max-width: 560px) {
+  .chart-day-shortcuts {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 480px) {
   .nav-link { min-width: 50px; font-size: .58rem; }
   .forecast-grid { grid-template-columns: repeat(2, 1fr); }
