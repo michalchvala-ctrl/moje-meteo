@@ -1,0 +1,12 @@
+node_modules/
+server/data/
+server/node_modules/
+*.db
+*.db-*
+.jwt-secret
+.env
+.env.*
+.DS_Store
+Thumbs.db
+*.log
+assets/

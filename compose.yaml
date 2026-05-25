@@ -1,0 +1,18 @@
+services:
+  meteo:
+    build: .
+    image: moje-meteo:latest
+    container_name: moje-meteo
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      TZ: Europe/Bratislava
+      PORT: "8081"
+      DB_PATH: /data/meteo.db
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: ${METEO_ADMIN_PASSWORD:-zmen-heslo}
+      COOKIE_SECURE: "false"
+      TRUST_PROXY: "false"
+    volumes:
+      - /opt/moje-meteo-data:/data:Z,U

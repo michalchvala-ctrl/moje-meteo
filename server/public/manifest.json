@@ -1,0 +1,20 @@
+{
+  "name": "Moje meteo",
+  "short_name": "Meteo",
+  "description": "Ecowitt počasie — Vonku, Chata",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#5b9bd9",
+  "theme_color": "#5b9bd9",
+  "lang": "sk",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
