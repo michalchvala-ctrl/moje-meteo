@@ -75,12 +75,17 @@ function getConfig() {
 }
 
 function clientSettings() {
-  const c = getConfig();
+  const s = getRow();
+  const days = Math.max(1, Math.min(7, parseInt(s.forecast_days, 10) || 7));
+  const lat = s.forecast_lat != null ? Number(s.forecast_lat) : DEFAULT_LAT;
+  const lon = s.forecast_lon != null ? Number(s.forecast_lon) : DEFAULT_LON;
+  const name = (s.forecast_location_name || '').trim();
   return {
-    lat: c.lat,
-    lon: c.lon,
-    name: c.name,
-    days: c.days
+    lat,
+    lon,
+    name,
+    label: name || DEFAULT_NAME,
+    days
   };
 }
 
@@ -88,7 +93,9 @@ function updateSettings(f) {
   const cur = getRow();
   const lat = f.lat != null ? parseFloat(f.lat) : cur.forecast_lat;
   const lon = f.lon != null ? parseFloat(f.lon) : cur.forecast_lon;
-  const name = f.name !== undefined ? (f.name || DEFAULT_NAME) : cur.forecast_location_name;
+  const name = f.name !== undefined
+    ? String(f.name || '').trim()
+    : cur.forecast_location_name;
   const days = f.days != null
     ? Math.max(1, Math.min(7, parseInt(f.days, 10) || 7))
     : cur.forecast_days;

@@ -873,6 +873,15 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   text-align: left;
 }
 .forecast-day-details div + div { margin-top: .15rem; }
+.forecast-saved-summary {
+  margin: 0 0 .75rem;
+  padding: .55rem .75rem;
+  background: var(--primary-soft);
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+  color: var(--text);
+  line-height: 1.4;
+}
 .forecast-source { margin-top: 1rem; }
 .forecast-source a { color: var(--primary); }
 

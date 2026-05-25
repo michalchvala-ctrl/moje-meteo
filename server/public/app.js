@@ -218,6 +218,7 @@ $$('#nav .nav-link').forEach(btn => {
 async function loadApp() {
   initTheme();
   state.settings = await api('/api/settings');
+  fillForecastSettingsForm(state.settings?.forecast);
   await loadCurrent();
   registerServiceWorker();
   initLiveTimeControls();
@@ -645,15 +646,27 @@ function formatCoord(n) {
 }
 
 function fillForecastSettingsForm(fc) {
-  if (!fc) return;
   const lat = $('#forecastLat');
   const lon = $('#forecastLon');
   const name = $('#forecastName');
+  const query = $('#forecastLocationQuery');
   const days = $('#forecastDays');
+  const summary = $('#forecastSavedSummary');
+  if (!fc) {
+    if (summary) summary.textContent = 'Lokalita nie je uložená.';
+    return;
+  }
+  const label = (fc.name || fc.label || '').trim();
   if (lat) lat.value = formatCoord(fc.lat);
   if (lon) lon.value = formatCoord(fc.lon);
-  if (name) name.value = fc.name || '';
+  if (name) name.value = label;
+  if (query) query.value = label;
   if (days) days.value = String(fc.days || 7);
+  if (summary) {
+    summary.textContent = label
+      ? `Uložené: ${label} · ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`
+      : `Uložené súradnice: ${formatCoord(fc.lat)}, ${formatCoord(fc.lon)} · ${fc.days || 7} dní`;
+  }
 }
 
 async function loadForecast() {
@@ -665,7 +678,7 @@ async function loadForecast() {
     const fc = state.settings?.forecast || (await api('/api/settings')).forecast;
     const days = fc?.days || 7;
     const data = await api(`/api/forecast?days=${days}`);
-    const loc = data.location?.name || '—';
+    const loc = data.location?.name || fc?.label || fc?.name || '—';
     const updated = data.fetched_at
       ? new Date(data.fetched_at).toLocaleString('sk-SK', { timeZone: 'Europe/Bratislava' })
       : '—';
@@ -739,7 +752,8 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const lat = parseCoord($('#forecastLat')?.value);
   const lon = parseCoord($('#forecastLon')?.value);
-  const name = $('#forecastName')?.value?.trim();
+  const name = $('#forecastName')?.value?.trim()
+    || $('#forecastLocationQuery')?.value?.trim();
   const days = parseInt($('#forecastDays')?.value, 10);
   if (Number.isNaN(lat) || Number.isNaN(lon)) {
     toast('Zadaj platné súradnice (bodka alebo čiarka).', 'error');
@@ -796,6 +810,7 @@ $('#settingsEcowitt').addEventListener('submit', async (e) => {
   if (fd.get('api_key')) body.ecowitt.api_key = fd.get('api_key');
   try {
     state.settings = await api('/api/settings', { method: 'PUT', body });
+    fillForecastSettingsForm(state.settings?.forecast);
     toast('Nastavenia uložené');
   } catch (err) {
     toast(err.message, 'error');
@@ -825,6 +840,7 @@ $('#settingsAlerts').addEventListener('submit', async (e) => {
         }
       }
     });
+    fillForecastSettingsForm(state.settings?.forecast);
     toast('Prahy uložené');
   } catch (err) {
     toast(err.message, 'error');

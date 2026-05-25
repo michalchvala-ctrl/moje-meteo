@@ -276,7 +276,7 @@ app.get('/api/current', requireAuth, (req, res) => {
   const latest = ecowitt.getLatestSample();
   const today = ecowitt.getTodayDaily();
   const bannerAlerts = alerts.getActiveBannerAlerts();
-  const settings = ecowitt.settingsForClient();
+  const settings = settingsPayload();
   res.json({ latest, today, alerts: bannerAlerts, settings });
 });
 
