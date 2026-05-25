@@ -218,6 +218,7 @@ $$('#nav .nav-link').forEach(btn => {
     $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
     if (view === 'charts') loadCharts();
     if (view === 'forecast') loadForecast();
+    if (view === 'radar' && typeof initRadarView === 'function') await initRadarView();
     if (view === 'alerts') loadAlertsList();
     if (view === 'settings') loadSettingsForms();
     if (view === 'dashboard') loadCurrent();
@@ -750,6 +751,11 @@ async function loadForecast() {
 
 $('#btnForecastRefresh')?.addEventListener('click', () => loadForecast());
 
+$('#btnOpenRadar')?.addEventListener('click', () => {
+  const btn = $('#nav .nav-link[data-view="radar"]');
+  btn?.click();
+});
+
 $('#btnForecastGeocode')?.addEventListener('click', async () => {
   const q = $('#forecastLocationQuery')?.value?.trim();
   const list = $('#forecastGeoResults');
@@ -814,6 +820,9 @@ $('#settingsForecast')?.addEventListener('submit', async (e) => {
     await fillForecastSettingsForm(fc || justSaved);
     toast('Lokalita predpovede uložená');
     if ($('#view-forecast')?.classList.contains('active')) loadForecast();
+    if ($('#view-radar')?.classList.contains('active') && typeof initRadarView === 'function') {
+      initRadarView(true);
+    }
   } catch (err) {
     toast(err.message, 'error');
   }
