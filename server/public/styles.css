@@ -809,12 +809,14 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   transform-origin: 0 0;
   transform-box: fill-box;
 }
-.live-wind-hand-shape { fill: #dc2626; }
-.live-wind-hub { fill: #44403c; stroke: #292524; stroke-width: 0.6; }
+/* Rovnaká logika ako .wind-arrow-mark na Prehľade — špička na obvode, smer do stredu */
+.live-wind-arrow-mark {
+  fill: var(--primary);
+  filter: drop-shadow(0 0 1px color-mix(in srgb, var(--primary) 35%, transparent));
+}
 .live-vane-hand {
-  transform-origin: 0 0;
-  transform-box: fill-box;
-  transition: transform 0.75s ease;
+  transform-origin: 0px 0px;
+  transition: transform 0.45s ease;
 }
 [data-theme="dark"] .live-roof-window-frame { fill: #7c4a2a; stroke: #5c3d2e; }
 [data-theme="dark"] .live-wind-dial-face { fill: rgba(30, 58, 90, .85); stroke: #38bdf8; }
