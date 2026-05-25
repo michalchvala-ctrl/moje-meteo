@@ -306,11 +306,16 @@ function renderLiveScene(latest) {
   root.style.setProperty('--rain-int', s.rainInt.toFixed(2));
 
   const driftDeg = s.windFrom != null ? s.blowTo : 90;
-  root.style.setProperty('--cloud-angle', `${driftDeg}deg`);
+  const east = Math.sin((driftDeg * Math.PI) / 180);
   const cloudDur = liveCloudDriftDuration(s.windSpeed, s.windStr);
   root.style.setProperty('--cloud-dur', `${cloudDur}s`);
-  root.style.setProperty('--cloud-dur-b', `${(cloudDur * 1.15).toFixed(1)}s`);
-  root.style.setProperty('--cloud-dur-c', `${(cloudDur * 1.45).toFixed(1)}s`);
+  root.style.setProperty('--cloud-dur-b', `${(cloudDur * 1.2).toFixed(1)}s`);
+  root.style.setProperty('--cloud-dur-c', `${(cloudDur * 1.55).toFixed(1)}s`);
+  const windEl = document.getElementById('liveCloudWind');
+  if (windEl) {
+    windEl.dataset.reverse = east < 0 ? '1' : '0';
+    windEl.dataset.flow = east >= 0 ? 'east' : 'west';
+  }
 
   const applyCelestial = (wrap, pos, el, show) => {
     if (!wrap || !el) return;
