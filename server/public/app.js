@@ -625,14 +625,24 @@ $('#btnAckAll').addEventListener('click', async () => {
   loadCurrent(true);
 });
 
+function parseCoord(v) {
+  if (v == null || v === '') return NaN;
+  return parseFloat(String(v).trim().replace(',', '.'));
+}
+
+function formatCoord(n) {
+  if (n == null || Number.isNaN(Number(n))) return '';
+  return String(Number(n));
+}
+
 function fillForecastSettingsForm(fc) {
   if (!fc) return;
   const lat = $('#forecastLat');
   const lon = $('#forecastLon');
   const name = $('#forecastName');
   const days = $('#forecastDays');
-  if (lat) lat.value = fc.lat ?? '';
-  if (lon) lon.value = fc.lon ?? '';
+  if (lat) lat.value = formatCoord(fc.lat);
+  if (lon) lon.value = formatCoord(fc.lon);
   if (name) name.value = fc.name || '';
   if (days) days.value = String(fc.days || 7);
 }
@@ -704,8 +714,8 @@ $('#btnForecastGeocode')?.addEventListener('click', async () => {
     list.querySelectorAll('button').forEach((btn) => {
       btn.addEventListener('click', () => {
         const r = list._results[parseInt(btn.dataset.idx, 10)];
-        $('#forecastLat').value = r.lat;
-        $('#forecastLon').value = r.lon;
+        $('#forecastLat').value = formatCoord(r.lat);
+        $('#forecastLon').value = formatCoord(r.lon);
         $('#forecastName').value = r.name;
         list.classList.add('hidden');
         toast(`Vybraté: ${r.label}`);
@@ -718,10 +728,14 @@ $('#btnForecastGeocode')?.addEventListener('click', async () => {
 
 $('#settingsForecast')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const lat = parseFloat($('#forecastLat')?.value);
-  const lon = parseFloat($('#forecastLon')?.value);
+  const lat = parseCoord($('#forecastLat')?.value);
+  const lon = parseCoord($('#forecastLon')?.value);
   const name = $('#forecastName')?.value?.trim();
   const days = parseInt($('#forecastDays')?.value, 10);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    toast('Zadaj platné súradnice (bodka alebo čiarka).', 'error');
+    return;
+  }
   try {
     state.settings = await api('/api/settings', {
       method: 'PUT',
