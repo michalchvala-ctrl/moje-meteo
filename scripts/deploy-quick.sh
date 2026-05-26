@@ -13,6 +13,7 @@ podman cp server/server.js moje-meteo:/app/server.js
 podman cp server/ecowitt.js moje-meteo:/app/ecowitt.js
 podman cp server/meteo-utils.js moje-meteo:/app/meteo-utils.js
 podman cp server/export-data.js moje-meteo:/app/export-data.js
+podman cp server/radar-tiles.js moje-meteo:/app/radar-tiles.js
 podman cp server/public/. moje-meteo:/app/public/
 podman cp VERSION moje-meteo:/app/VERSION
 

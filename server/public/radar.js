@@ -1,10 +1,9 @@
 /**
  * Radar zrážok — RainViewer / LibreWXR + Leaflet (lazy load).
- * Lokalita z nastavenia predpovede (forecast_lat/lon).
+ * Dáta cez /api/radar/* (proxy dlaždíc — spoľahlivé prepínanie zdrojov).
  */
 (function () {
   const STORAGE_KEY = 'meteo_radar_provider';
-  const TILE_SIZE = typeof window !== 'undefined' && window.devicePixelRatio >= 2 ? 512 : 256;
   const ANIM_MS = 550;
   const FALLBACK = { lat: 48.1486, lon: 17.1077, name: 'Bratislava', zoom: 8 };
 
@@ -12,22 +11,12 @@
     rainviewer: {
       id: 'rainviewer',
       label: 'RainViewer',
-      apiUrl: 'https://api.rainviewer.com/public/weather-maps.json',
-      defaultHost: 'https://tilecache.rainviewer.com',
-      tileSize: TILE_SIZE,
-      color: 2,
-      options: '1_1',
       attribution: { name: 'RainViewer', url: 'https://www.rainviewer.com/' },
       licenseNote: ''
     },
     librewxr: {
       id: 'librewxr',
       label: 'LibreWXR',
-      apiUrl: 'https://api.librewxr.net/public/weather-maps.json',
-      defaultHost: 'https://api.librewxr.net',
-      tileSize: 256,
-      color: 7,
-      options: '1_1',
       attribution: { name: 'LibreWXR', url: 'https://librewxr.net/' },
       licenseNote: ' (CC-BY-4.0)'
     }
@@ -36,15 +25,16 @@
   let providerId = loadProviderId();
   let map = null;
   let radarLayer = null;
-  let apiHost = PROVIDERS[providerId].defaultHost;
   let frames = [];
   let frameIdx = 0;
+  let currentFramePath = '';
   let playing = false;
   let playTimer = null;
   let leafletPromise = null;
   let mapReady = false;
   let lastLocKey = '';
   let lastFetchKey = '';
+  let tileErrors = 0;
 
   function currentProvider() {
     return PROVIDERS[providerId] || PROVIDERS.rainviewer;
@@ -67,6 +57,10 @@
 
   function $(sel) {
     return document.querySelector(sel);
+  }
+
+  function $$(sel) {
+    return [...document.querySelectorAll(sel)];
   }
 
   function loadScript(src) {
@@ -137,8 +131,8 @@
   }
 
   function tileUrl(path) {
-    const p = currentProvider();
-    return `${apiHost}${path}/${p.tileSize}/{z}/{x}/{y}/${p.color}/${p.options}.png`;
+    const enc = encodeURIComponent(path);
+    return `/api/radar/tile?provider=${providerId}&path=${enc}&z={z}&x={x}&y={y}`;
   }
 
   function formatFrameTime(unix) {
@@ -156,10 +150,6 @@
     if (!el) return;
     el.textContent = text;
     el.classList.toggle('error', !!isError);
-  }
-
-  function $$(sel) {
-    return [...document.querySelectorAll(sel)];
   }
 
   function updateAttribution() {
@@ -190,11 +180,51 @@
     }
   }
 
+  function removeRadarLayer() {
+    if (map && radarLayer) {
+      map.removeLayer(radarLayer);
+    }
+    radarLayer = null;
+  }
+
+  function attachRadarLayer(path) {
+    if (!map || !path) return;
+    removeRadarLayer();
+    currentFramePath = path;
+    tileErrors = 0;
+    radarLayer = L.tileLayer(tileUrl(path), {
+      pane: 'radarPane',
+      tileSize: 256,
+      opacity: 0.82,
+      maxNativeZoom: 7,
+      maxZoom: 12,
+      className: `radar-tiles radar-tiles-${providerId}`,
+      updateWhenZooming: true,
+      updateWhenIdle: true
+    });
+    radarLayer.on('tileerror', () => {
+      tileErrors += 1;
+      if (tileErrors === 3) {
+        setMeta(
+          `${currentProvider().label}: dlaždice sa nenačítavajú — skús ⟳ alebo druhý zdroj.`,
+          true
+        );
+      }
+    });
+    radarLayer.addTo(map);
+    radarLayer.bringToFront();
+  }
+
   function showFrame(index) {
-    if (!frames.length || !radarLayer) return;
+    if (!frames.length) return;
     frameIdx = Math.max(0, Math.min(frames.length - 1, index));
     const frame = frames[frameIdx];
-    radarLayer.setUrl(tileUrl(frame.path));
+    if (!frame?.path) return;
+    if (!radarLayer || currentFramePath !== frame.path) {
+      attachRadarLayer(frame.path);
+    } else {
+      radarLayer.setUrl(tileUrl(frame.path));
+    }
     updateSliderUi();
   }
 
@@ -257,37 +287,19 @@
       fillColor: '#fff',
       fillOpacity: 0.9
     }).addTo(map).bindPopup(loc.name);
+    map.createPane('radarPane');
+    map.getPane('radarPane').style.zIndex = 450;
     mapReady = true;
     setTimeout(() => map.invalidateSize(), 80);
   }
 
-  function ensureRadarLayer(L) {
-    if (!map) return;
-    if (radarLayer) {
-      map.removeLayer(radarLayer);
-      radarLayer = null;
-    }
-    const path = frames[frameIdx]?.path || frames[frames.length - 1]?.path;
-    if (!path) return;
-    radarLayer = L.tileLayer(tileUrl(path), {
-      tileSize: 256,
-      opacity: 0.78,
-      maxNativeZoom: 7,
-      maxZoom: 12,
-      zIndex: 200
-    });
-    radarLayer.addTo(map);
-  }
-
   async function fetchFrames() {
+    if (typeof api !== 'function') {
+      throw new Error('Radar vyžaduje prihlásenie do aplikácie.');
+    }
     const p = currentProvider();
-    const res = await fetch(p.apiUrl);
-    if (!res.ok) throw new Error(`${p.label} HTTP ${res.status}`);
-    const data = await res.json();
-    apiHost = data.host || p.defaultHost;
-    const past = data?.radar?.past || [];
-    const nowcast = data?.radar?.nowcast || [];
-    frames = [...past, ...nowcast];
+    const data = await api(`/api/radar/frames?provider=${p.id}`);
+    frames = data.frames || [];
     if (!frames.length) throw new Error(`${p.label}: radar momentálne nemá snímky.`);
     frameIdx = frames.length - 1;
   }
@@ -312,11 +324,11 @@
       }
 
       if (lastFetchKey !== fetchKey || !frames.length) {
+        removeRadarLayer();
         await fetchFrames();
         lastFetchKey = fetchKey;
       }
 
-      ensureRadarLayer(L);
       showFrame(frameIdx);
 
       const updated = frames[frameIdx]
@@ -328,8 +340,12 @@
           ? ' — nastav lokalitu v Predpovedi / Nastaveniach'
           : '';
       setMeta(`${currentProvider().label} · ${loc.name} · ${frames.length} snímok · posledná ${updated}${srcHint}`);
-      if (map) map.invalidateSize();
+      if (map) {
+        map.invalidateSize();
+        setTimeout(() => map.invalidateSize(), 150);
+      }
     } catch (e) {
+      removeRadarLayer();
       setMeta(e.message || 'Radar sa nepodarilo načítať.', true);
     }
   }
@@ -337,8 +353,10 @@
   function setProvider(id) {
     if (!PROVIDERS[id] || id === providerId) return;
     saveProviderId(id);
-    apiHost = currentProvider().defaultHost;
+    stopPlay();
+    removeRadarLayer();
     frames = [];
+    currentFramePath = '';
     lastFetchKey = '';
     syncProviderUi();
     initRadarView(true);
@@ -355,6 +373,7 @@
     $('#btnRadarPlay')?.addEventListener('click', togglePlay);
     $('#btnRadarRefresh')?.addEventListener('click', () => {
       lastFetchKey = '';
+      removeRadarLayer();
       initRadarView(true);
     });
     $('#btnRadarCenter')?.addEventListener('click', centerMap);

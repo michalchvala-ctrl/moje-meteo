@@ -14,6 +14,7 @@ const alerts = require('./alerts');
 const { chartResolveRange, chartPeriodRangeIso } = require('./chart-period');
 const meteoUtils = require('./meteo-utils');
 const exportData = require('./export-data');
+const radarTiles = require('./radar-tiles');
 
 const PORT = parseInt(process.env.PORT || '8081', 10);
 
@@ -303,6 +304,39 @@ app.get('/api/system-status', requireAuth, (req, res) => {
   } catch (e) {
     console.error('[system-status]', e);
     res.status(500).json({ error: e.message || 'Stav systému sa nepodarilo načítať.' });
+  }
+});
+
+app.get('/api/radar/frames', requireAuth, async (req, res) => {
+  try {
+    const provider = radarTiles.normalizeProvider(req.query.provider);
+    const data = await radarTiles.fetchFrames(provider);
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message || 'Radar metadata zlyhala.' });
+  }
+});
+
+app.get('/api/radar/tile', requireAuth, async (req, res) => {
+  try {
+    const provider = radarTiles.normalizeProvider(req.query.provider);
+    const path = radarTiles.normalizePath(req.query.path);
+    const z = parseInt(req.query.z, 10);
+    const x = parseInt(req.query.x, 10);
+    const y = parseInt(req.query.y, 10);
+    if ([z, x, y].some((n) => Number.isNaN(n) || n < 0)) {
+      return res.status(400).json({ error: 'Neplatné súradnice dlaždice.' });
+    }
+    const { res: upstream } = await radarTiles.fetchTile(provider, path, z, x, y);
+    if (!upstream.ok) {
+      return res.status(upstream.status).send(upstream.statusText);
+    }
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.set('Content-Type', upstream.headers.get('content-type') || 'image/png');
+    res.set('Cache-Control', 'public, max-age=300');
+    res.send(buf);
+  } catch (e) {
+    res.status(400).json({ error: e.message || 'Radarová dlaždica zlyhala.' });
   }
 });
 
