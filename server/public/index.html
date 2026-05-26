@@ -383,7 +383,13 @@
       <section id="view-radar" class="view">
         <div class="card-header">
           <h2>Radar zrážok</h2>
-          <button type="button" id="btnRadarRefresh" class="btn small primary" title="Obnoviť radar">⟳</button>
+          <div class="radar-header-actions">
+            <div class="segmented" id="radarProviderSeg" aria-label="Zdroj radarových dát">
+              <button type="button" data-provider="rainviewer" class="active">RainViewer</button>
+              <button type="button" data-provider="librewxr">LibreWXR</button>
+            </div>
+            <button type="button" id="btnRadarRefresh" class="btn small primary" title="Obnoviť radar">⟳</button>
+          </div>
         </div>
         <p id="radarMeta" class="muted small">—</p>
         <div class="radar-map-shell card">
@@ -403,7 +409,7 @@
           </div>
         </div>
         <p class="muted small radar-source">
-          Zdroj radarových dát: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>
+          Zdroj radarových dát: <a id="radarSourceLink" href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>
           · mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.
           Lokalita je rovnaká ako v <strong>Predpovedi</strong> (Nastavenia).
         </p>
