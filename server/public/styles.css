@@ -1070,6 +1070,16 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 }
 
 /* —— Radar zrážok —— */
+.radar-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.radar-header-actions .segmented {
+  flex-shrink: 0;
+}
+
 .radar-map-shell {
   position: relative;
   padding: 0;

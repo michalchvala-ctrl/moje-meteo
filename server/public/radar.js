@@ -177,10 +177,6 @@
     updateAttribution();
   }
 
-  function $$ (sel) {
-    return [...document.querySelectorAll(sel)];
-  }
-
   function updateSliderUi() {
     const slider = $('#radarSlider');
     const timeEl = $('#radarFrameTime');
@@ -273,7 +269,6 @@
     }
     const path = frames[frameIdx]?.path || frames[frames.length - 1]?.path;
     if (!path) return;
-    const p = currentProvider();
     radarLayer = L.tileLayer(tileUrl(path), {
       tileSize: 256,
       opacity: 0.78,
