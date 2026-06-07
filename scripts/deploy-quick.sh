@@ -4,31 +4,38 @@ set -e
 cd /opt/moje-meteo
 git pull origin main
 
-echo "Verzia v repozitári: $(cat VERSION 2>/dev/null || echo '?')"
+VER=$(cat VERSION 2>/dev/null || echo '?')
+echo "Verzia v repozitári: $VER"
 
-podman cp server/forecast.js moje-meteo:/app/forecast.js
-podman cp server/chart-period.js moje-meteo:/app/chart-period.js
-podman cp server/schedule-sync.js moje-meteo:/app/schedule-sync.js
-podman cp server/server.js moje-meteo:/app/server.js
-podman cp server/ecowitt.js moje-meteo:/app/ecowitt.js
-podman cp server/meteo-utils.js moje-meteo:/app/meteo-utils.js
-podman cp server/export-data.js moje-meteo:/app/export-data.js
-podman cp server/radar-tiles.js moje-meteo:/app/radar-tiles.js
-podman cp server/public/. moje-meteo:/app/public/
-podman cp VERSION moje-meteo:/app/VERSION
+C=moje-meteo
 
-podman restart moje-meteo
-sleep 2
+podman cp server/forecast.js "$C":/app/forecast.js
+podman cp server/chart-period.js "$C":/app/chart-period.js
+podman cp server/schedule-sync.js "$C":/app/schedule-sync.js
+podman cp server/server.js "$C":/app/server.js
+podman cp server/ecowitt.js "$C":/app/ecowitt.js
+podman cp server/meteo-utils.js "$C":/app/meteo-utils.js
+podman cp server/export-data.js "$C":/app/export-data.js
+podman cp server/radar-tiles.js "$C":/app/radar-tiles.js
+podman cp server/public/. "$C":/app/public/
+podman cp VERSION "$C":/app/VERSION
 
-echo "--- /api/config (musí sedieť s VERSION) ---"
+podman restart "$C"
+sleep 3
+
+echo ""
+echo "--- /api/config (musí obsahovať version: $VER) ---"
 curl -s http://127.0.0.1:8081/api/config
 echo ""
 
+echo ""
 echo "--- súbory v kontajneri ---"
-podman exec moje-meteo cat /app/VERSION
-podman exec moje-meteo test -f /app/meteo-utils.js && echo "OK: meteo-utils.js" || echo "CHÝBA: meteo-utils.js"
-podman exec moje-meteo test -f /app/export-data.js && echo "OK: export-data.js" || echo "CHÝBA: export-data.js"
-podman exec moje-meteo grep -o 'v=1\.[0-9.]*' /app/public/index.html | head -3
+podman exec "$C" cat /app/VERSION
+for f in meteo-utils.js export-data.js radar-tiles.js schedule-sync.js chart-period.js; do
+  podman exec "$C" test -f "/app/$f" && echo "OK: $f" || echo "CHÝBA: $f"
+done
+podman exec "$C" grep -o 'v=1\.[0-9.]*' /app/public/index.html | head -3
 
 echo ""
-echo "V prehliadači: Ctrl+Shift+R. Ak ostáva stará verzia: DevTools → Application → Service Workers → Unregister."
+echo "Logy (posledných 15 riadkov): podman logs --tail 15 $C"
+echo "V prehliadači: Ctrl+Shift+R. Ak ostáva stará verzia: Service Workers → Unregister."
