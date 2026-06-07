@@ -10,14 +10,35 @@ if [ -f .env ]; then
   set +a
 fi
 
+remove_meteo_container() {
+  echo "Odstraňujem starý kontajner moje-meteo…"
+  podman stop moje-meteo 2>/dev/null || true
+  podman rm -f moje-meteo 2>/dev/null || true
+  if podman compose version >/dev/null 2>&1; then
+    podman compose down 2>/dev/null || true
+  fi
+  for id in $(podman ps -aq --filter name=moje-meteo 2>/dev/null); do
+    podman rm -f "$id" 2>/dev/null || true
+  done
+}
+
 echo "=== Obnova kontajnera moje-meteo ==="
 echo "Verzia v repozitári: $(cat VERSION 2>/dev/null || echo '?')"
 
-podman rm -f moje-meteo 2>/dev/null || true
+remove_meteo_container
 rm -rf server/node_modules
 
 echo "Build image (môže trvať 1–2 min)…"
 podman build -t moje-meteo:latest .
+
+# Ešte raz pred štartom (po build-e môže ostať mŕtvy kontajner)
+remove_meteo_container
+
+if podman container exists moje-meteo 2>/dev/null; then
+  echo "CHYBA: meno moje-meteo je stále obsadené. Skús: podman rm -f moje-meteo"
+  podman ps -a --filter name=moje-meteo
+  exit 1
+fi
 
 if podman compose version >/dev/null 2>&1; then
   echo "Spúšťam cez podman compose…"
