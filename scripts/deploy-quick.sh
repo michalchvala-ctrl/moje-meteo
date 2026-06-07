@@ -9,6 +9,15 @@ echo "Verzia v repozitári: $VER"
 
 C=moje-meteo
 
+if ! podman container exists "$C" 2>/dev/null; then
+  echo "Kontajner $C neexistuje — spúšťam obnovu…"
+  bash scripts/recreate-container.sh
+  exit 0
+fi
+
+echo "Zastavujem kontajner pred kopírovaním…"
+podman stop "$C" 2>/dev/null || true
+
 podman cp server/forecast.js "$C":/app/forecast.js
 podman cp server/chart-period.js "$C":/app/chart-period.js
 podman cp server/schedule-sync.js "$C":/app/schedule-sync.js
@@ -20,7 +29,8 @@ podman cp server/radar-tiles.js "$C":/app/radar-tiles.js
 podman cp server/public/. "$C":/app/public/
 podman cp VERSION "$C":/app/VERSION
 
-podman restart "$C"
+echo "Spúšťam kontajner…"
+podman start "$C"
 sleep 3
 
 echo ""
@@ -37,5 +47,6 @@ done
 podman exec "$C" grep -o 'v=1\.[0-9.]*' /app/public/index.html | head -3
 
 echo ""
-echo "Logy (posledných 15 riadkov): podman logs --tail 15 $C"
-echo "V prehliadači: Ctrl+Shift+R. Ak ostáva stará verzia: Service Workers → Unregister."
+echo "Logy: podman logs --tail 15 $C"
+echo "Ak kontajner opäť zmizne: bash scripts/recreate-container.sh"
+echo "V prehliadači: Ctrl+Shift+R."
