@@ -1,7 +1,8 @@
-const VERSION = 'v1.6.9';
+const VERSION = 'v1.6.10';
 const STATIC_CACHE = `meteo-static-${VERSION}`;
 
-const PRECACHE = ['/', '/manifest.json', '/icon.svg'];
+/* Neprecachovať index.html — inak PWA drží staré menu bez Predpovede/Radaru */
+const PRECACHE = ['/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

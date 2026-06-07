@@ -550,10 +550,19 @@ app.post('/api/alerts/ack-all', requireAuth, (req, res) => {
 });
 
 const publicDir = path.join(__dirname, 'public');
-app.use(express.static(publicDir, { maxAge: '1h', etag: true }));
+app.use(express.static(publicDir, {
+  maxAge: '1h',
+  etag: true,
+  setHeaders(res, filePath) {
+    if (filePath.endsWith(`${path.sep}index.html`) || filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(publicDir, 'index.html'));
 });
 
