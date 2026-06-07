@@ -10,7 +10,12 @@ echo "Verzia v repozitári: $VER"
 C=moje-meteo
 
 if ! podman container exists "$C" 2>/dev/null; then
-  echo "Kontajner $C neexistuje — spúšťam obnovu…"
+  echo "Kontajner $C neexistuje — skúšam štart existujúceho image…"
+  if podman image exists moje-meteo:latest 2>/dev/null; then
+    bash scripts/start-meteo.sh
+    exit 0
+  fi
+  echo "Image chýba — plná obnova…"
   bash scripts/recreate-container.sh
   exit 0
 fi

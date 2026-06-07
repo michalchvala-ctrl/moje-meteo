@@ -10,56 +10,37 @@ if [ -f .env ]; then
   set +a
 fi
 
-remove_meteo_container() {
-  echo "Odstraňujem starý kontajner moje-meteo…"
-  podman stop moje-meteo 2>/dev/null || true
-  podman rm -f moje-meteo 2>/dev/null || true
-  if podman compose version >/dev/null 2>&1; then
-    podman compose down 2>/dev/null || true
-  fi
-  for id in $(podman ps -aq --filter name=moje-meteo 2>/dev/null); do
-    podman rm -f "$id" 2>/dev/null || true
-  done
-}
-
 echo "=== Obnova kontajnera moje-meteo ==="
 echo "Verzia v repozitári: $(cat VERSION 2>/dev/null || echo '?')"
 
-remove_meteo_container
+bash scripts/remove-meteo-container.sh
 rm -rf server/node_modules
 
 echo "Build image (môže trvať 1–2 min)…"
 podman build -t moje-meteo:latest .
 
-# Ešte raz pred štartom (po build-e môže ostať mŕtvy kontajner)
-remove_meteo_container
+bash scripts/remove-meteo-container.sh
 
-if podman container exists moje-meteo 2>/dev/null; then
-  echo "CHYBA: meno moje-meteo je stále obsadené. Skús: podman rm -f moje-meteo"
-  podman ps -a --filter name=moje-meteo
+if podman ps -a --filter name=moje-meteo -q 2>/dev/null | grep -q .; then
+  echo "CHYBA: moje-meteo sa nepodarilo odstrániť."
   exit 1
 fi
 
-if podman compose version >/dev/null 2>&1; then
-  echo "Spúšťam cez podman compose…"
-  METEO_ADMIN_PASSWORD="${METEO_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-zmen-heslo}}" \
-    podman compose up -d
-else
-  echo "Spúšťam cez podman run…"
-  podman run -d \
-    --name moje-meteo \
-    --restart unless-stopped \
-    -p 8081:8081 \
-    -e TZ=Europe/Bratislava \
-    -e PORT=8081 \
-    -e DB_PATH=/data/meteo.db \
-    -e ADMIN_USERNAME="${ADMIN_USERNAME:-admin}" \
-    -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-${METEO_ADMIN_PASSWORD:-zmen-heslo}}" \
-    -e COOKIE_SECURE=false \
-    -e TRUST_PROXY=false \
-    -v /opt/moje-meteo-data:/data:Z,U \
-    moje-meteo:latest
-fi
+echo "Spúšťam kontajner…"
+podman run -d \
+  --name moje-meteo \
+  --replace \
+  --restart unless-stopped \
+  -p 8081:8081 \
+  -e TZ=Europe/Bratislava \
+  -e PORT=8081 \
+  -e DB_PATH=/data/meteo.db \
+  -e ADMIN_USERNAME="${ADMIN_USERNAME:-admin}" \
+  -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-${METEO_ADMIN_PASSWORD:-zmen-heslo}}" \
+  -e COOKIE_SECURE=false \
+  -e TRUST_PROXY=false \
+  -v /opt/moje-meteo-data:/data:Z,U \
+  moje-meteo:latest
 
 sleep 3
 echo ""
